@@ -1,0 +1,33 @@
+[project]
+name = "trading v2"
+version = "2.0.0"
+description = "A forex trading and backtesting framework"
+authors = [
+  { name = "Max Carrington", email = "maxcarrington0002@gmail.com" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = "3.9"
+
+dependencies = [
+  "numpy",
+  "pandas",
+  "statsmodels",
+  "scipy",
+  "requests",
+  "oandapyV20",
+  "yfinance",
+  "mplfinance",
+  "matplotlib",
+  "seaborn",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "black",
+  "isort",
+  "ruff",
+  "pre-commit",
+  "mypy",
+]
