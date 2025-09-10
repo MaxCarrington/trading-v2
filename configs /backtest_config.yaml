@@ -1,0 +1,14 @@
+strategy: momentum
+pair: EUR_USD
+timeframe: M5
+in_sample: 560
+out_sample: 140
+capital: 10000
+slippage: 0.1
+commission: 0.001
+spread: 0.0002
+risk_per_trade: 0.01
+max_concurrent_trades: 3
+indicators:
+  - name: SMA
+    period: 20

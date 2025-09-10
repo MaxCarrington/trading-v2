@@ -1,0 +1,12 @@
+README.md
+pyproject.toml
+src/trading/data/OANDA.py
+src/trading/data/YahooFinance.py
+src/trading/data/data.py
+src/trading/data/dividends.py
+src/trading/utils/paths.py
+src/trading_v2.egg-info/PKG-INFO
+src/trading_v2.egg-info/SOURCES.txt
+src/trading_v2.egg-info/dependency_links.txt
+src/trading_v2.egg-info/requires.txt
+src/trading_v2.egg-info/top_level.txt
