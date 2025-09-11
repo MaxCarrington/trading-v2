@@ -1,120 +1,77 @@
 import os 
 import pandas as pd
+import trading.utils.constants as constants
 
-# Define root and key directories
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
-print("Root dir:", ROOT_DIR)
-SRC_DIR = os.path.join(ROOT_DIR, "src")
-DATA_DIR = os.path.join(ROOT_DIR, "data")
-TRADING_DIR = os.path.join(SRC_DIR, "trading")
-LOGS_DIR = os.path.join(ROOT_DIR, "logs")
-SCIPTS_DIR = os.path.join(ROOT_DIR, "scripts")
-TESTS_DIR = os.path.join(ROOT_DIR, "tests")
+# Get the number of periods for a given time frame
+def get_num_time_frame_periods(time_frame):
+    if time_frame in constants.TIME_FRAMES:
+        return constants.TIME_FRAMES[time_frame]["periods"]
 
-# Directories for storing stock and forex data
-DIVIDENDS_DIR = os.path.join(DATA_DIR, "stocks", "dividends")
-DAY_DATA_DIR = os.path.join(DATA_DIR, "stocks", "daily")
-DAILY_FOREX_DATA = os.path.join(DATA_DIR, "forex", "daily")
+# Get the directory path for daily forex data for a given day
+def get_forex_dir(provider, pair, time_frame, start):
+    if not isinstance(start, str):
+        start = start.strftime("%Y-%m-%d")
+    return os.path.join(constants.RAW_DATA_DIR, provider, "forex", pair, time_frame, start)
 
-DIVIDENDS_API_KEY = "REDACTED"
-
-# Dictionary of time frames with their corresponding granularity and price type
-time_frames = {
-    "D": {
-        "granularity": 'D',  # Hourly interval
-        "price": 'M'          # Midpoint prices
-    },
-    "H4": {
-        "granularity": 'H4',  # Hourly interval
-        "price": 'M'          # Midpoint prices
-    },
-    "H1": {
-        "granularity": 'H1',  # Hourly interval
-        "price": 'M'          # Midpoint prices
-    },
-    "M30": {
-        "granularity": 'M30',  # 30-minute interval
-        "price": 'M'          # Midpoint prices
-    },
-    "M15": {
-        "granularity": 'M15',  # 15-minute interval
-        "price": 'M'          # Midpoint prices
-    },
-    "M5": {
-        "granularity": 'M5',   # 5-minute interval
-        "price": 'M'          # Midpoint prices
-    },
-    "M1": {
-        "granularity": 'M1',   # 1-minute interval
-        "price": 'M'          # Midpoint prices
-    }
-}
-
-# List of currency pairs to fetch data for
-pairs = [
-    # Major Pairs
-    "EUR_USD", "USD_JPY", "GBP_USD", "AUD_USD", 
-    "USD_CHF", "USD_CAD", "NZD_USD",
-    
-    # Metals
-    "XAU_USD"
-]
+# Get the directory path for daily stock data for a given day and symbol
+def get_stock_dir(provider, symbol, time_frame, start):
+    return os.path.join(constants.RAW_DATA_DIR, provider, "stocks", symbol, time_frame, start)
 
 # Get the logs directory
 def get_logs_dir():
-    return LOGS_DIR
+    return constants.LOGS_DIR
 
 # Get the scripts directory
 def get_scripts_dir():
-    return SCIPTS_DIR
+    return constants.SCIPTS_DIR
 
 # Get the tests directory
 def get_tests_dir():  
-    return TESTS_DIR
+    return constants.TESTS_DIR
 
 # Get the dictionary of time frames
 def get_time_frames():
-    return time_frames
+    return constants.TIME_FRAMES
 
 # Get the list of currency pairs
 def get_pairs():
-    return pairs
+    return constants.PAIRS
 
 # Get the dividends API key
 def get_dividends_api_key():
-    return DIVIDENDS_API_KEY
+    return constants.DIVIDENDS_API_KEY
 
 # Get the root directory
 def get_root_dir():
-    return ROOT_DIR
+    return constants.ROOT_DIR
 
 # Get the trading directory
 def get_trading_dir():
-    return TRADING_DIR
+    return constants.TRADING_DIR
 
 # Get the src directory
 def get_src_dir():
-    return SRC_DIR
+    return constants.SRC_DIR
 
 # Get the data directory
 def get_data_dir():
-    return DATA_DIR
+    return constants.DATA_DIR
 
 # Get the dividends directory
 def get_dividends_dir():
-    return DIVIDENDS_DIR
+    return constants.DIVIDENDS_DIR
 
 # Get the daily stock data directory
 def get_daily_stock_data_dir():
-    return DAY_DATA_DIR
+    return constants.DAILY_STOCK_DATA
 
 # Get the daily forex data directory
 def get_daily_forex_data_dir():
-    return DAILY_FOREX_DATA
+    return constants.DAILY_FOREX_DATA
 
 # Load a dividend file for a given stock symbol and return the file path.
 def get_dividend_file(symbol):
-    dividend_path = os.path.join(DIVIDENDS_DIR, symbol)
+    dividend_path = os.path.join(constants.DIVIDENDS_DIR, symbol)
     
     if not os.path.isdir(dividend_path):
         raise FileNotFoundError(f"Directory for symbol '{symbol}' not found at path: {dividend_path}")
@@ -127,7 +84,7 @@ def get_dividend_file(symbol):
 
 # Load a daily stock time series from CSV in a given year and return the file path.
 def get_time_series_file_path(symbol, year):
-    time_series_path = os.path.join(DAY_DATA_DIR, year, symbol)
+    time_series_path = os.path.join(constants.DAY_DATA_DIR, year, symbol)
 
     if not os.path.isdir(time_series_path):
         raise FileNotFoundError(f"Directory for symbol '{symbol}' not found at path: {time_series_path}")
@@ -140,7 +97,7 @@ def get_time_series_file_path(symbol, year):
 
 # Load a daily forex time series from CSV and return as a DataFrame.
 def get_daily_forex_data_df(date, time_frame, pair):
-    time_frame_data = os.path.join(DAILY_FOREX_DATA, date, time_frame)
+    time_frame_data = os.path.join(constants.DAILY_FOREX_DATA, date, time_frame)
     if not os.path.isdir(time_frame_data):
         raise FileNotFoundError(f"Directory not found at path: {time_frame_data}")
     else:
@@ -170,5 +127,4 @@ def get_time_series_period_df(data_path, start_date, end_date):
 
 # Stack df2 directly under df1, keeping all columns and dates.
 def stitch_dataframes(df1, df2):
-    print("Stitching")
     return pd.concat([df1, df2]).sort_index()
