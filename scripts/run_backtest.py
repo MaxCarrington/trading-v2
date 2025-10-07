@@ -20,3 +20,5 @@ config = load_config(config_path)
 
 # Set up logging
 start_log(config_path, config)
+
+

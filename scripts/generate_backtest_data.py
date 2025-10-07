@@ -69,8 +69,6 @@ def get_time_frame():
     print(f"No --timeframe specified. Using default: {default_tf}")
     return default_tf
 
-
-
 # Validate and parse command-line arguments, to determine the tickers or pairs
 def get_tickers(data_type):
     if data_type == "stock":

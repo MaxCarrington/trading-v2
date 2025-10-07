@@ -8,14 +8,20 @@ def get_num_time_frame_periods(time_frame):
         return constants.TIME_FRAMES[time_frame]["periods"]
 
 # Get the directory path for daily forex data for a given day
-def get_forex_dir(provider, pair, time_frame, start):
-    if not isinstance(start, str):
+def get_forex_dir(provider, pair, time_frame, start=None):
+    if not isinstance(start, str) and start is not None:
         start = start.strftime("%Y-%m-%d")
-    return os.path.join(constants.RAW_DATA_DIR, provider, "forex", pair, time_frame, start)
+    if start is None:
+        return os.path.join(constants.RAW_DATA_DIR, provider, "forex", pair, time_frame)
+    else:
+        return os.path.join(constants.RAW_DATA_DIR, provider, "forex", pair, time_frame, start)
 
 # Get the directory path for daily stock data for a given day and symbol
 def get_stock_dir(provider, symbol, time_frame, start):
     return os.path.join(constants.RAW_DATA_DIR, provider, "stocks", symbol, time_frame, start)
+
+def get_raw_data_dir():
+    return constants.RAW_DATA_DIR
 
 # Get the logs directory
 def get_logs_dir():
@@ -60,14 +66,6 @@ def get_data_dir():
 # Get the dividends directory
 def get_dividends_dir():
     return constants.DIVIDENDS_DIR
-
-# Get the daily stock data directory
-def get_daily_stock_data_dir():
-    return constants.DAILY_STOCK_DATA
-
-# Get the daily forex data directory
-def get_daily_forex_data_dir():
-    return constants.DAILY_FOREX_DATA
 
 # Load a dividend file for a given stock symbol and return the file path.
 def get_dividend_file(symbol):
@@ -125,6 +123,3 @@ def get_time_series_period_df(data_path, start_date, end_date):
     print(end_date)
     return df.loc[start_date:end_date]                 # vectorised slice, keeps every column
 
-# Stack df2 directly under df1, keeping all columns and dates.
-def stitch_dataframes(df1, df2):
-    return pd.concat([df1, df2]).sort_index()

@@ -3,6 +3,8 @@ Charts/
 DATA/
 Logs/
 TestResults/
+.idea/
+tests/
 
 # Python cache files
 __pycache__/
