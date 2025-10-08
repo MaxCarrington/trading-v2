@@ -12,7 +12,7 @@ TESTS_DIR = os.path.join(ROOT_DIR, "tests")
 # Directories for storing stock and forex data
 DIVIDENDS_DIR = os.path.join(DATA_DIR, "stocks", "dividends")
 RAW_DATA_DIR = os.path.join(DATA_DIR, "raw")
-
+OANDA_DATA_DIR = os.path.join(RAW_DATA_DIR, "oanda")
 DIVIDENDS_API_KEY = "REDACTED"
 
 # Dictionary of time frames with their corresponding granularity and price type

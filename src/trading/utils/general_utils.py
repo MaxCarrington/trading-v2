@@ -1,7 +1,7 @@
 import re 
 import pandas as pd
 from pathlib import Path
-import src.trading.utils.paths as paths
+import src as paths
 from datetime import date, timedelta
 
 # Converts a csv file to a data frame, localising the time zone
