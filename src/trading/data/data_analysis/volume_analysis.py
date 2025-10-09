@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import ta
 import warnings
-sssss
 from ta.trend import ema_indicator
 from scipy.stats import pearsonr
 
