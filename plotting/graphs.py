@@ -1,12 +1,11 @@
 import os
 import pandas as pd
 import mplfinance as mpf
-import matplotlib.dates as mdates
 
 import matplotlib.pyplot as plt
 import src.trading.utils.constants as constants
 from src.trading.indicators.average_true_range import calculate_rolling_atr
-from src.trading.data.volume_analysis import classify_volatility
+from src.trading.data.data_analysis.volatility_analysis import classify_volatility
 
 # Plots a candle stick chart for a time series at a particular time interval on a certain date
 def plot_ccandlestick_chart(series, asset_name, time_interval, date, data_path=None):
