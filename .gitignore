@@ -1,6 +1,6 @@
 # Directories to ignore ---------------------------------------------------
 Charts/
-DATA/
+/DATA/
 Logs/
 TestResults/
 .idea/
