@@ -8,7 +8,10 @@ TRADING_DIR = os.path.join(SRC_DIR, "trading")
 LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 SCIPTS_DIR = os.path.join(ROOT_DIR, "scripts")
 TESTS_DIR = os.path.join(ROOT_DIR, "tests")
-
+REPORTS_DIR = os.path.join(ROOT_DIR, "reports")
+FIGURES_DIR = os.path.join(REPORTS_DIR, "figures")
+CANDLES_DIR = os.path.join(FIGURES_DIR, "candles")
+CANDLES_WITH_VOLATILITY_DIR = os.path.join(FIGURES_DIR, "candles_with_volatility")
 # Directories for storing stock and forex data
 DIVIDENDS_DIR = os.path.join(DATA_DIR, "stocks", "dividends")
 RAW_DATA_DIR = os.path.join(DATA_DIR, "raw")

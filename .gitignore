@@ -5,6 +5,7 @@ Logs/
 TestResults/
 .idea/
 tests/
+reports/
 
 # Python cache files
 __pycache__/
