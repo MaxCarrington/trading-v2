@@ -9,9 +9,8 @@ from src.trading.utils.data_manipulation import zscore_standardisation
 
 warnings.filterwarnings("ignore", category=RuntimeWarning, message="Degrees of freedom <= 0 for slice")
 
-
 # Analyses periods of high trading volume and liquidity
-def combined_liquidity_analysis(series, vol_lookback=20, liquidity_thresh=0.6, window_size=10):
+def combined_liquidity_analysis(series, asset, time_frame, date, vol_lookback=20, liquidity_thresh=0.6, window_size=10):
     # Identify high volume periods
     high_volume_periods = high_liquidity_periods(series, vol_lookback, liquidity_thresh)
 
@@ -51,14 +50,19 @@ def combined_liquidity_analysis(series, vol_lookback=20, liquidity_thresh=0.6, w
         'vwap-at_liquidity': vwap_at_liquidity,
         'regime_scores': score_df,
         'reliability_at_liquidity': reliability_at_liquidity,
+        'asset': asset,
+        'time_frame': time_frame,
+        'date': date
     }
 
+# Scores periods based on the liquidity and momentum
 def score_period(series, idx, window):
     sub = series.iloc[idx-window:idx]
     liq = estimate_liquidity(sub, window)['high_liquidity'].iloc[-1]
     mom = vol_inc_with_trend(sub, window)['correlation']
     return {'liquidity': liq, 'momentum': mom}
 
+# Determines the regime, resulting in either 'Breakout', 'Liquidity', 'Momentum' or 'Neutral'
 def tag_regime(liquidity, momentum, threshold=0.5):
     if liquidity and momentum > threshold:
         return 'Breakout'
@@ -179,7 +183,6 @@ def estimate_liquidity(series, window_size=10):
         'reliability': reliability_score
     }
 
-
 # Combines normalised price and volume into a score
 def standard_price_n_vol(norm_prices, norm_volume):
     return (norm_prices + norm_volume) / 2
@@ -207,6 +210,9 @@ def high_liquidity_periods(series, vol_lookback, threshold):
 # Print function to neatly display results
 def print_liquidity_analysis(result):
     print("\n💧 Liquidity Diagnostic Summary")
+    print(f"\n Asset: {result.get('asset')}")
+    print(f"\n Date: {result.get('date')}")
+    print(f"\nTimeframe: {result.get('time_frame')}")
     print("-" * 40)
     print(f"Lookback Window          : {result.get('lookback')}")
     print(f"Liquidity Threshold      : {result.get('liquidity_thresh')}")

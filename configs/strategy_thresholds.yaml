@@ -1,0 +1,11 @@
+mean_reversion:
+  p_value_threshold: 0.95
+  score_threshold: 40
+
+momentum:
+  p_value_threshold: 0.95
+  length_threshold: 0.90
+
+market_making:
+  liquidity_period_threshold: 0.18
+  high_liquidity_count_threshold: 10

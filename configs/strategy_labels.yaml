@@ -1,0 +1,5 @@
+labels:
+  mean_reversion: "Mean-Reversion"
+  momentum: "Momentum"
+  market_making: "Market-Making"
+  none: "None"

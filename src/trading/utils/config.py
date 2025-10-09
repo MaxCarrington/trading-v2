@@ -4,6 +4,17 @@ from src.trading.utils.logger import log
 
 CONFIG_FILE_DEFAULT = Path(__file__).resolve().parents[3] / "configs" / "backtest_config.yaml"
 
+# Load YAML configs
+def load_strategy_configs():
+    root = Path(__file__).resolve().parents[3] / "configs"
+
+    thresholds = load_config(root / "strategy_thresholds.yaml")
+    analysis_params = load_config(root / "analysis_parameters.yaml")
+    setup_params = load_config(root / "strategy_setup.yaml")
+    labels = load_config(root / "strategy_labels.yaml").get("labels", {})
+
+    return thresholds, analysis_params, setup_params, labels
+
 def load_config(path):
     try:
         with open(path, "r") as f:

@@ -6,7 +6,7 @@ from src.trading.utils.data_manipulation import zscore_standardisation
 
 # Function uses Average True Range, Standard Deviation
 # to determine the volatility over a given period
-def analyse_period_vol(series, lookback):
+def analyse_period_volatility(series, lookback, asset, time_frame, date):
     std_dev = stddev_rolling_window(series, lookback)
 
     # Standardise ATR, and StdDev
@@ -23,7 +23,16 @@ def analyse_period_vol(series, lookback):
     # Calculate overall and period volatility based on periods
     series_vol = analyse_series_vol(vol_classifications)
 
-    return {"combined_score": combined_score, "period_vol": vol_classifications, "series_vol": series_vol, "std_atrs": standardised_atrs, "std_std_dev": standardised_std_dev}
+    return {
+        "combined_score": combined_score,
+        "period_vol": vol_classifications,
+        "series_vol": series_vol,
+        "std_atrs": standardised_atrs,
+        "std_std_dev": standardised_std_dev,
+        'asset': asset,
+        'time_frame': time_frame,
+        'date': date
+    }
 
 # Given the monthly volatilities, determine the overall volatility of a time series
 def analyse_series_vol(monthly_volatility):
@@ -139,3 +148,40 @@ def stddev_rolling_window(series, lookback):
     returns = np.log(close_safe).diff(1)
     rolling_stddev = returns.rolling(window=lookback).std()
     return rolling_stddev
+
+# Neatly print out volatility analysis
+def print_volatility_analysis(result, max_periods=10):
+    print("\n📈 Volatility Diagnostic Summary")
+    print(f"\n Asset: {result.get('asset')}")
+    print(f"\n Date: {result.get('date')}")
+    print(f"\nTimeframe: {result.get('time_frame')}")
+    print("-" * 40)
+
+    # Overall classification
+    series_vol = result.get("series_vol", "Unknown")
+    print(f"Overall Series Volatility : {series_vol}")
+
+    # Distribution of period classifications
+    period_vol = result.get("period_vol", [])
+    freq = Counter(period_vol)
+    print("\n🧮 Period Volatility Distribution:")
+    for label in ["Low", "Medium", "High", "Highly Volatile"]:
+        count = freq.get(label, 0)
+        print(f"  → {label:<18}: {count}")
+
+    # Composite score snapshot
+    combined_score = result.get("combined_score", [])
+    if isinstance(combined_score, (list, pd.Series)) and len(combined_score) > 0:
+        print("\n🔍 Composite Score Snapshot:")
+        scores = pd.Series(combined_score).dropna()
+        print(f"  Mean Score              : {scores.mean():.3f}")
+        print(f"  Std Dev of Score        : {scores.std():.3f}")
+        print(f"  Max Score               : {scores.max():.3f}")
+        print(f"  Min Score               : {scores.min():.3f}")
+
+    # Optional: print first few period classifications
+    print("\n🕒 First Few Period Classifications:")
+    for i, label in enumerate(period_vol[:max_periods]):
+        print(f"  Period {i + 1:<2} → {label}")
+
+    print("-" * 40)

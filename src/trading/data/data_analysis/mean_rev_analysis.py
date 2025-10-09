@@ -14,8 +14,8 @@ from src.trading.data.stat_tests.variance_ratio_test import perform_variance_rat
 #   - If score is higher than the set amount, the time series will be used for
 #     mean reversion
 #-------------------------------------------------------------------------------
-def get_series_mean_rev_stats(series_df, index, threshold=0.05):
-    close = series_df['Close']
+def get_series_mean_rev_stats(series, asset, time_frame, date, threshold=0.05):
+    close = series['Close']
     score = 0
     consistency = 0
 
@@ -40,7 +40,6 @@ def get_series_mean_rev_stats(series_df, index, threshold=0.05):
         return (20, True) if pval is not None and pval < threshold else (0, False)
 
     # Apply scoring
-    print(h_val)
     hurst_score, hurst_consistent = score_hurst(h_val)
     vr_score, vr_consistent = score_vr(vr_result)
     adf_score, adf_consistent = score_adf(adf_result)
@@ -64,7 +63,7 @@ def get_series_mean_rev_stats(series_df, index, threshold=0.05):
     if score > 0 and consistency == 3:
         score += 20
 
-    normalized_score = round((score / 95.0) * 100, 2)
+    normalised_score = round((score / 95.0) * 100, 2)
 
     component_scores = {
         'hurst': hurst_score / 20,
@@ -77,9 +76,11 @@ def get_series_mean_rev_stats(series_df, index, threshold=0.05):
         'attributes': attributes,
         'mean_rev_score': score,
         'component_scores': component_scores,
-        'normalized_score': normalized_score,
+        'normalised_score': normalised_score,
         'half_life_duration': half_life_duration,
-        'series_index': index
+        'asset': asset,
+        'time_frame': time_frame,
+        'date': date
     }
 
 #-------------------------------------------------------------------------------
@@ -152,7 +153,6 @@ def determine_half_life_quantile(attributes, reference_distribution=None):
         short_boundary = 15
         medium_boundary = 32
         long_boundary = 52
-        print(attributes)
         hl_with = attributes['half_life']['HalfLife_WithIntercept']
         hl_without = attributes['half_life']['HalfLife_NoIntercept']
         if hl_with < short_boundary or hl_without < short_boundary:
@@ -177,41 +177,106 @@ def calc_half_life_score(duration_label):
 # Prints mean reversion statistics in a readable manner
 def print_mean_rev_summary(stats):
     attrs = stats['attributes']
-    print(f"\nMean Reversion Stats (Series Index: {stats['series_index']})")
-    print("-" * 40)
-    print(f"Hurst Exponent: {attrs['h_val']['hurst']}")
-    print(f"Hurst Exponent classficiation: {attrs['h_val']['classification']}")
 
+    print(f"\n📊 **Mean Reversion Stats**")
+    print(f"Asset: {stats['asset']}")
+    print(f"Timeframe: {stats['time_frame']}")
+    print(f"Date: {stats['date']}")
+    print("-" * 50)
+
+    # --- Hurst Exponent ---
+    print("\n📈 Hurst Exponent:")
+    print(f"  - Value: {attrs['h_val']['hurst']}")
+    print(f"  - Classification: {attrs['h_val']['classification']}")
+
+    # --- Variance Ratio Test ---
     vr = attrs['vr_result']
-    print("\nVariance Ratio Test:")
-    print(f"  - Significant: {vr['Significant']}")
-    print(f"  - Lag: {vr['Lag']}")
-    print(f"  - Stats: {vr['Stats']}")
+    vr_stats = vr.get('Stats', {})
 
+    print("\n🔁 Variance Ratio Test:")
+    print(f"  - Significant         : {vr.get('Significant')}")
+    print(f"  - Lag Used            : {vr.get('Lag')}")
+    print(f"  - Reason              : {vr.get('Reason', 'N/A')}")
+    if vr_stats:
+        print(f"     • Test Statistic   : {vr_stats.get('stat', 'N/A'):.4f}")
+        print(f"     • p-value          : {vr_stats.get('p_value', 'N/A'):.4f}")
+        print(f"     • Variance Ratio   : {vr_stats.get('vr', 'N/A'):.4f}")
+    else:
+        print("     • No valid statistics returned.")
+
+    # --- ADF Test ---
     adf = attrs['adf_result']
-    print("\nADF Test:")
-    print(f"Test found stationarity was: {adf['is_stationary']}")
+    print("\n🧮 ADF Test:")
+    print(f"  - Stationarity Detected: {adf['is_stationary']}")
     print(f"  - ADF Statistic: {adf['adf_statistic']:.4f}")
     print(f"  - p-value: {adf['p_value']:.4f}")
     print(f"  - Used Lag: {adf['used_lag']}")
     print(f"  - Observations: {adf['n_obs']}")
     print("  - Critical Values:")
     for k, v in adf['critical_values'].items():
-        print(f"      - {k}: {v:.4f}")
+        print(f"      • {k}: {v:.4f}")
     print(f"  - Best IC (AIC/BIC): {adf['ic_best']:.4f}")
 
+    # --- Half-Life ---
     hl = attrs['half_life']
-    print("\nHalf-Life of Mean Reversion:")
+    print("\n⏳ Half-Life of Mean Reversion:")
     print(f"  - With Intercept: {hl['HalfLife_WithIntercept']:.4f}")
     print(f"  - No Intercept:   {hl['HalfLife_NoIntercept']:.4f}")
     print(f"  - Duration Category: {stats['half_life_duration']}")
 
+    # --- Component Scores ---
     comp = stats['component_scores']
-    print("\nComponent Scores:")
+    print("\n🧩 Component Scores:")
     print(f"  - Hurst:     {comp['hurst']:.2f}")
     print(f"  - VR:        {comp['vr']:.2f}")
     print(f"  - ADF:       {comp['adf']:.2f}")
     print(f"  - Half-Life: {comp['half_life']:.2f}")
 
-    print(f"\nTotal Mean Reversion Score: {stats['mean_rev_score']}")
-    print(f"Normalized Score (0–100): {stats['normalized_score']:.2f}")
+    # --- Final Score ---
+    # --- Final Score ---
+    print("\n🏁 Final Mean Reversion Summary:")
+    print(f"  - Total Raw Score       : {stats['mean_rev_score']} / 95")
+    print(f"  - Normalized Score      : {stats['normalized_score']:.2f} / 100")
+    print("\n🔍 Score Breakdown:")
+
+    # Hurst
+    hurst_class = attrs['h_val']['classification']
+    hurst_score = comp['hurst'] * 20
+    print(f"  • Hurst Exponent        : {hurst_class} → +{int(hurst_score)} points")
+
+    # Variance Ratio
+    vr_reason = vr.get('Reason', 'N/A')
+    vr_score = comp['vr'] * 15
+    print(f"  • Variance Ratio        : {vr_reason} → +{int(vr_score)} points")
+
+    # ADF
+    adf_pval = adf['p_value']
+    adf_score = comp['adf'] * 20
+    adf_reason = "Stationary" if adf_pval < 0.05 else "Non-stationary"
+    print(f"  • ADF Test              : {adf_reason} (p={adf_pval:.4f}) → +{int(adf_score)} points")
+
+    # Half-Life
+    hl_category = stats['half_life_duration']
+    hl_score = comp['half_life'] * 20
+    print(f"  • Half-Life Duration    : {hl_category} → +{int(hl_score)} points")
+
+    # Bonus
+    bonus = stats['mean_rev_score'] - (hurst_score + vr_score + adf_score + hl_score)
+    if bonus > 0:
+        print(f"  • Full Agreement Bonus  : +{bonus} points")
+
+    # Verdict
+    score = stats['normalized_score']
+    if score >= 85:
+        verdict = "✅ Strong Mean-Reversion Candidate"
+    elif score >= 65:
+        verdict = "⚠️  Moderate Mean-Reversion Potential"
+    elif score >= 40:
+        verdict = "❓ Weak Mean-Reversion Signal"
+    else:
+        verdict = "❌ Not Suitable for Mean-Reversion Strategy"
+
+    print(f"\n🧠 Verdict                : {verdict}")
+    print("-" * 50)
+
+

@@ -1,0 +1,19 @@
+volatility:
+  lookback: 20
+
+liquidity:
+  volume_lookback: 20
+  window_size: 10
+  threshold: 0.6
+
+momentum:
+  window_size: 30
+
+price:
+  lookback: 15
+
+volume:
+  multiplier: 1.25
+
+range:
+  multiplier: 0.75
