@@ -41,6 +41,5 @@ def determine_best_strategy(momentum_stats, mean_rev_stats, volatility_stats, li
     print("-" * 50)
     return strategy
 
-def print_out_verdict_justification(veridt)
 
 
