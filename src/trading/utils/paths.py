@@ -123,3 +123,17 @@ def get_time_series_period_df(data_path, start_date, end_date):
     print(end_date)
     return df.loc[start_date:end_date]                 # vectorised slice, keeps every column
 
+# Saves content to a file at a specific directory
+def save_to_file(dir, file_name, content):
+    # Ensure the directory exists
+    if not os.path.isdir(dir):
+        os.makedirs(dir, exist_ok=True)
+
+    file_path = os.path.join(dir, file_name)
+
+    # Write content to the file
+    with open(file_path, 'w') as f:
+        f.write(content)
+
+    print(f"File saved to: {file_path}")
+

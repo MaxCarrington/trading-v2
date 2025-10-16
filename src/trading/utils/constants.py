@@ -12,6 +12,7 @@ REPORTS_DIR = os.path.join(ROOT_DIR, "reports")
 FIGURES_DIR = os.path.join(REPORTS_DIR, "figures")
 CANDLES_DIR = os.path.join(FIGURES_DIR, "candles")
 CANDLES_WITH_VOLATILITY_DIR = os.path.join(FIGURES_DIR, "candles_with_volatility")
+RESULTS_FIGURES_DIR = os.path.join(FIGURES_DIR, "results")
 # Directories for storing stock and forex data
 DIVIDENDS_DIR = os.path.join(DATA_DIR, "stocks", "dividends")
 RAW_DATA_DIR = os.path.join(DATA_DIR, "raw")

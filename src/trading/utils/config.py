@@ -31,7 +31,7 @@ def get_config_file_default():
     return CONFIG_FILE_DEFAULT
 
 # Loads config and returns the starting capital value
-def get_config_initial_balance(path=None):
+def get_initial_capital(path=None):
     config = load_config(path or get_config_file_default())
     return config.get("starting_capital", 1_000_000)
 

@@ -84,7 +84,8 @@ def rolling_analysis(series, asset, timeframe, date, min_periods=100):
 
     return {
         "mean_reversion_periods": mean_rev_periods,
-        "momentum_periods": momentum_periods
+        "momentum_periods": momentum_periods,
+        "regime_periods": regime_periods
     }
 
 
