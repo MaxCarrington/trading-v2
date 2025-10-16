@@ -4,7 +4,8 @@ import statsmodels.api as sm
 from src.trading.data.stat_tests.augmented_dickey_fuller import perform_adf_test
 from src.trading.data.stat_tests.hurst_exponent import calculate_hurst_exponent
 from src.trading.data.stat_tests.variance_ratio_test import perform_variance_ratio_test
-#-------------------------------------------------------------------------------
+
+
 #  Calculates mean reversion statistics
 #   - Calculate the variance ratio for each time series
 #   - Calculate the half life of mean-reversion
@@ -13,7 +14,6 @@ from src.trading.data.stat_tests.variance_ratio_test import perform_variance_rat
 #   - Score each time series out of 100 based on above
 #   - If score is higher than the set amount, the time series will be used for
 #     mean reversion
-#-------------------------------------------------------------------------------
 def get_series_mean_rev_stats(series, asset, time_frame, date, threshold=0.05):
     close = series['Close']
     score = 0
@@ -83,7 +83,6 @@ def get_series_mean_rev_stats(series, asset, time_frame, date, threshold=0.05):
         'date': date
     }
 
-#-------------------------------------------------------------------------------
 # Calculation of the half life of mean reversion for a given time series
 
 # The half life of mean reversion is used to determine the time it takes for an
@@ -92,7 +91,7 @@ def get_series_mean_rev_stats(series, asset, time_frame, date, threshold=0.05):
 # reversion does not take a long time. Otherwise, if the half-life were long,
 # this would render the strategy less useful as it cannot profit regularly.
 
-# Code taken from: https://flare9xblog.wordpress.com/2017/09/27/half-life-of-mean
+# Code adapted from: https://flare9xblog.wordpress.com/2017/09/27/half-life-of-mean
 #-reversion-ornstein-uhlenbeck-formula-for-mean-reverting-process/
 # The functionality of the code taken from the link has been changed to work for
 # the OHLCV format
@@ -133,6 +132,7 @@ def calculate_half_life(series):
         'HalfLife_NoIntercept': half_life_no_intercept
     }
 
+# Determines half lives using quantiles
 def determine_half_life_quantile(attributes, reference_distribution=None):
     if reference_distribution is not None:
         q25 = np.percentile(reference_distribution, 25)

@@ -14,11 +14,15 @@ def calculate_hurst_exponent(series):
     clean_series = series[series > 0].dropna()  # avoid log(0) or negatives
     log_returns = np.log(clean_series).diff().dropna()
 
-    try:
-        h, _, _ = compute_Hc(clean_series, kind='price', simplified=True)  # use raw prices here
-    except Exception as e:
-        print(f"Error computing Hurst exponent: {e}")
+    if len(clean_series) < 100:
+        print("Skipping Hurst calculation: series too short (<100)")
         h = np.nan
+    else:
+        try:
+            h, _, _ = compute_Hc(clean_series, kind='price', simplified=True)
+        except Exception as e:
+            print(f"Error computing Hurst exponent: {e}")
+            h = np.nan
 
     if np.isnan(h):
         try:

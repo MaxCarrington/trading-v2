@@ -22,7 +22,12 @@ def get_momentum_statistics(series, length_threshold, asset, time_frame, date):
 
     # --- Correlation diagnostics ---
     strength = abs(rolling_correlations.get('best_correlation'))
-    reliability = min(1.0, len(rolling_correlations.get('correlations', [])) / rolling_correlations.get('max_possible_windows', 1))
+    max_windows = rolling_correlations.get('max_possible_windows', 1)
+    if max_windows == 0:
+        reliability = 0.0
+    else:
+        reliability = min(1.0, len(rolling_correlations.get('correlations', [])) / max_windows)
+
     confidence = min(0.4 * strength + 0.6 * reliability, 1.0)
 
     # --- Base score ---

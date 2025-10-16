@@ -127,5 +127,6 @@ def get_data_for_timeframe_date(
             f"No CSV files found in {root}/**/{timeframe}/{date_str}/ (pairs filter: {pairs})"
         )
 
-    data_list = list(data_map.values())
-    return data_list, data_map
+    data_values = list(data_map.values())
+    data_keys = list(data_map.keys())
+    return data_keys, data_values, data_map
