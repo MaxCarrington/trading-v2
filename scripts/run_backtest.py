@@ -1,8 +1,8 @@
 import sys
 import pandas as pd
 
-from src import log, start_log
-from src import load_config, get_config_file_default, get_config_initial_balance
+from src.trading.utils.logger import start_log
+from src.trading.utils.config import load_config, get_config_file_default, get_initial_capital
 
 #--------------------------------------------------------------------------------
 # Capture command-line arguments
@@ -17,7 +17,7 @@ config_path = sys.argv[2] if len(sys.argv) > 2 and sys.argv[1] == "--config" els
 config = load_config(config_path)
 
 # Set up logging
-start_log(config_path, config)
+#start_log(config_path, config)
 
 # Calculates slippage. Current implementation takes the overnight gap multiplied by a slippage multiplier - This can be optimsied further
 def calc_slippage(prev_close, curr_open, slippage_multiplier):
@@ -94,7 +94,7 @@ def find_pnl(prices, old_pos, market_order,
 def backtest_live(data_list, strategy_function, params, slippage_multiplier):
     num_periods = len(data_list[0])  # Assumes all series have same number of rows
     num_series = len(data_list)
-    balance = get_config_initial_balance()
+    balance = get_initial_capital()
     current_pos = [0] * num_series  # One position per series
     # For each series, store a list of daily pnl values.
     pnl_lists = [[] for _ in range(num_series)]

@@ -3,7 +3,8 @@ import pandas as pd
 from pathlib import Path
 import src as paths
 from datetime import date, timedelta
-
+from src.trading.utils.logger import error, info, warning
+from src.trading.utils.paths import get_forex_dir
 # Converts a csv file to a data frame, localising the time zone
 def from_csv_to_df(file_name, keep_time_zone=False):
     df = pd.read_csv(
@@ -39,19 +40,44 @@ def get_date_range(start_date: date, end_date: date):
         yield start_date + timedelta(n)
 
 def stitch_data_from_period(start_date, end_date, provider, pair, time_frame):
-    base_dir = Path(paths.get_forex_dir(provider, pair, time_frame))
+    base_dir = Path(get_forex_dir(provider, pair, time_frame))
     frames = []
+
+    info(f"Stitching data for {pair} from {start_date.date()} to {end_date.date()} using timeframe {time_frame}")
 
     for d in get_date_range(start_date, end_date):
         csv_path = base_dir / d.strftime("%Y-%m-%d") / f"{pair}.csv"
         if csv_path.exists():
-            # if you have your own reader, use it: df = from_csv_to_df(csv_path)
-            df = pd.read_csv(csv_path)
-            frames.append(df)
+            try:
+                df = pd.read_csv(csv_path)
+                if "Time" in df.columns:
+                    df["Time"] = pd.to_datetime(df["Time"], errors="coerce")
+                    df = df.dropna(subset=["Time"]).set_index("Time")
+                    df = df[["Open", "High", "Low", "Close", "Volume"]].sort_index()
+                    df = df[~df.index.duplicated(keep="last")]
+                frames.append(df)
+                info(f"Loaded {csv_path.name} on date {d.date()} with {len(df)} rows")
+            except Exception as e:
+                warning(f"Failed to process {csv_path.name}: {e}")
+        else:
+            warning(f"Missing file: {csv_path}")
 
     if not frames:
+        warning(f"No data frames collected for {pair}")
+        return [], [], {}
+
+    valid_frames = [f for f in frames if not f.empty]
+    if not valid_frames:
+        warning(f"All frames empty for {pair}")
         return pd.DataFrame()
 
-    # One concat at the end; keep rows in date order; drop index gaps
-    out = pd.concat([f for f in frames if not f.empty], ignore_index=True)
-    return out
+    stitched_df = pd.concat(valid_frames, axis=0).sort_index()
+
+    if stitched_df.index.tz is not None:
+        stitched_df.index = stitched_df.index.tz_convert(None)
+
+    data_keys = [pair]
+    data_values = [stitched_df]
+    data_map = {pair: stitched_df}
+    info(f"Stitched {len(stitched_df)} total rows for {pair}")
+    return data_keys, data_values, data_map

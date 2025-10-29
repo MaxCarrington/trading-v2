@@ -2,7 +2,7 @@ import os
 import logging
 from datetime import datetime
 from typing import Optional, Dict
-
+import colorlog
 from src.trading.utils.paths import get_logs_dir
 
 
@@ -14,15 +14,27 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 def _default_logger() -> logging.Logger:
     logger = logging.getLogger("trading")
     logger.setLevel(logging.INFO)
-    # If handlers already configured (e.g. in tests or application), keep them
+
     if not logger.handlers:
         ch = logging.StreamHandler()
         ch.setLevel(logging.INFO)
-        fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S")
-        ch.setFormatter(fmt)
-        logger.addHandler(ch)
-    return logger
 
+        formatter = colorlog.ColoredFormatter(
+            "%(log_color)s%(asctime)s [%(levelname)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+            log_colors={
+                "DEBUG": "white",
+                "INFO": "white",
+                "WARNING": "yellow",
+                "ERROR": "red",
+                "CRITICAL": "red",
+            },
+        )
+
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+
+    return logger
 
 # public logger instance
 log = _default_logger()

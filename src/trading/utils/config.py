@@ -4,6 +4,7 @@ from src.trading.utils.logger import log
 
 CONFIG_FILE_DEFAULT = Path(__file__).resolve().parents[3] / "configs" / "backtest_config.yaml"
 
+CONFIG_FILE_DEFAULT_2 = Path(__file__).resolve().parents[3] / "configs" / "backtest_config2.yaml"
 # Load YAML configs
 def load_strategy_configs():
     root = Path(__file__).resolve().parents[3] / "configs"
@@ -29,6 +30,10 @@ def load_config(path):
 # returns the default config file path
 def get_config_file_default():
     return CONFIG_FILE_DEFAULT
+
+# returns the default config file path
+def get_config_file_default2():
+    return CONFIG_FILE_DEFAULT_2
 
 # Loads config and returns the starting capital value
 def get_initial_capital(path=None):

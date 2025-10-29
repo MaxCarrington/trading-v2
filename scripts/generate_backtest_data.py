@@ -1,8 +1,3 @@
-import sys
-import trading.utils.constants as constants
-
-from trading.utils.general_utils import is_valid_regex
-#--------------------------------------------------------------------------------
 # Capture command-line arguments
 # Argument 0: script name (e.g. generate_stock_data.py)
 # Argument 1: --data flag (data flag)
@@ -15,22 +10,32 @@ from trading.utils.general_utils import is_valid_regex
 # Argument 8: (optional) comma-separated tickers (e.g. AAPL,MSFT,GOOGL,AMZN)
 # Run with: python scripts/run_backtest.py --config configs/backtest_config.yaml
 #--------------------------------------------------------------------------------
+import sys, os
 
-# Validate and parse command-line arguments, to determine if downloading stock or forex data
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from src.trading.utils.constants import YEAR_REGEX, YEAR_TIME_RANGE_REGEX, TIME_FRAMES, TICKERS, PAIRS
+
+from src.trading.utils.general_utils import is_valid_regex
+from src.trading.utils.logger import info, warning, error  # << ADD THIS
+#--------------------------------------------------------------------------------
+
+
 def get_data_type():
     if len(sys.argv) < 3 or sys.argv[1] != "--data":
-        print("Error: Missing or incorrect --data argument.")
+        error("Missing or incorrect --data argument.")
         sys.exit(1)
-    if sys.argv[2] not in ["stock", "forex"] or sys.argv[2] is None:
-        print("Error: Data type must be either 'stock' or 'forex'.")
+    if sys.argv[2] not in ["stock", "forex"]:
+        error("Data type must be either 'stock' or 'forex'.")
         sys.exit(1)
-
     return sys.argv[2]
 
-# Validate and parse command-line arguments, to determine years or a time range
+
 def get_years_or_range():
     if len(sys.argv) < 5:
-        print("Error: Missing --years/--period and value.")
+        error("Missing --years/--period and value.")
         sys.exit(1)
 
     flag = sys.argv[3]
@@ -38,113 +43,98 @@ def get_years_or_range():
 
     if flag == "--years":
         years = [y.strip() for y in value.split(",") if y.strip()]
-        if not all(is_valid_regex(year, constants.YEAR_REGEX) for year in years):
-            print(years)
-            print("Error: Years must be in YYYY format.")
+        if not all(is_valid_regex(year, YEAR_REGEX) for year in years):
+            error(f"Invalid year format: {years}")
             sys.exit(1)
-        return years  # list[str]
+        return years
 
     elif flag == "--period":
-        if not is_valid_regex(value, constants.YEAR_TIME_RANGE_REGEX):
-            print("Error: Period must be YYYY-MM-DD,YYYY-MM-DD.")
+        if not is_valid_regex(value, YEAR_TIME_RANGE_REGEX):
+            error("Period must be YYYY-MM-DD,YYYY-MM-DD.")
             sys.exit(1)
-        start_date, end_date = [p.strip() for p in value.split(",")]
-        return (start_date, end_date)  # tuple[str, str]
+        return tuple(value.split(","))
 
     else:
-        print("Error: Missing or incorrect --years or --period argument.")
+        error("Missing or incorrect --years or --period argument.")
         sys.exit(1)
 
-# Validate and parse command-line arguments, to determine the time frame
-def get_time_frame():
+
+def get_time_frames():
     if len(sys.argv) >= 7 and sys.argv[5] == "--timeframe":
-        tf = sys.argv[6]
-        if tf not in constants.TIME_FRAMES or tf is None:
-            print(f"Error: Time frame must be one of {list(constants.TIME_FRAMES.keys())}.")
-            sys.exit(1)
-        return tf
-
-    # Default to daily
-    default_tf = "D"
-    print(f"No --timeframe specified. Using default: {default_tf}")
-    return default_tf
-
-# Validate and parse command-line arguments, to determine the tickers or pairs
-def get_tickers(data_type):
-    if data_type == "stock":
-        if "--tickers" in sys.argv:
-            i = sys.argv.index("--tickers")
-            if i + 1 >= len(sys.argv):
-                print("Error: --tickers flag provided but no tickers specified.")
+        frames = [tf.strip() for tf in sys.argv[6].split(",")]
+        for tf in frames:
+            if tf not in TIME_FRAMES:
+                error(f"Time frame '{tf}' must be one of {list(TIME_FRAMES.keys())}.")
                 sys.exit(1)
-            return [t.strip() for t in sys.argv[i + 1].split(",") if t.strip()]
-        return constants.TICKERS
-    else:
-        return constants.PAIRS
-    
-# Convert years to year-start boundaries + closing boundary
+        return frames
+
+    info("No --timeframe specified. Using default: D")
+    return ["D"]
+
+
+def get_tickers(data_type):
+    if data_type == "stock" and "--tickers" in sys.argv:
+        index = sys.argv.index("--tickers")
+        if index + 1 >= len(sys.argv):
+            error("No tickers specified after --tickers flag.")
+            sys.exit(1)
+        return [t.strip() for t in sys.argv[index + 1].split(",") if t.strip()]
+    return TICKERS if data_type == "stock" else PAIRS
+
+
 def years_to_boundaries(years):
-    ys = sorted({int(y) for y in years})  # sort + de-dup
+    ys = sorted({int(y) for y in years})
     bounds = [f"{y:04d}-01-01" for y in ys]
-    bounds.append(f"{ys[-1] + 1:04d}-01-01")  # cap the last year
+    bounds.append(f"{ys[-1] + 1:04d}-01-01")
     return bounds
+
 
 def get_end_of_year(year):
     return f"{int(year):04d}-12-31"
 
+
 def start():
     data_type = get_data_type()
-    yr_or_rng = get_years_or_range()   # list[str] (years) OR tuple[str,str] (period)
-    time_frame = get_time_frame()
+    yr_or_rng = get_years_or_range()
+    time_frames = get_time_frames()
     tickers = get_tickers(data_type)
 
-    print(f"Data type: {data_type}")
-    print(f"Years or Range: {yr_or_rng}")
-    print(f"Time Frame: {time_frame}")
-    print(f"Tickers/Pairs: {tickers}")
+    info(f"Data: {data_type}")
+    info(f"Date Range: {yr_or_rng}")
+    info(f"Timeframes: {time_frames}")
+    info(f"Tickers/Pairs: {tickers}")
 
     if data_type == "stock":
-        if data_type == "stock":
-            if time_frame in ["H1", "M30", "M15", "M5", "M1"] and "--years" in sys.argv:
-                print("Error: For intraday timeframes, please use --period YYYY-MM-DD,YYYY-MM-DD.")
-                sys.exit(1)
+        if any(tf in ["H1","M30","M15","M5","M1"] for tf in time_frames) and "--years" in sys.argv:
+            error("For intraday stocks, use --period YYYY-MM-DD,YYYY-MM-DD.")
+            sys.exit(1)
 
-        from trading.data.YahooFinance import download_stocks, download_years
+        from src.trading.data.data_gathering import download_stocks, download_years
 
-        # Case 1: --period (already full dates)
-        if isinstance(yr_or_rng, tuple) and len(yr_or_rng) == 2:
-            start_date, end_date = yr_or_rng
-            download_stocks(tickers, start_date, end_date, time_frame)
+        if isinstance(yr_or_rng, tuple):
+            download_stocks(tickers, yr_or_rng[0], yr_or_rng[1], time_frames)
             return
 
-        # From here it's --years (list of YYYY strings)
         years = yr_or_rng
-
         if len(years) == 1:
             y = years[0]
-            start_date = f"{int(y):04d}-01-01"
-            end_date   = get_end_of_year(y)
-            download_stocks(tickers, start_date, end_date, time_frame)
-
-        elif len(years) >= 2:
-            # Build boundaries so download_years fetches each full year
-            boundaries = years_to_boundaries(years)
-            # download_years expects a list of dates where it uses [i]..[i+1]
-            download_years(boundaries, tickers, time_frame)
-
+            download_stocks(tickers, f"{y}-01-01", get_end_of_year(y), time_frames)
         else:
-            print("Error: No years provided.")
-            sys.exit(1)
+            boundaries = years_to_boundaries(years)
+            download_years(boundaries, tickers, time_frames)
 
     elif data_type == "forex":
-        from trading.data.OANDA import get_data_from_period
-        if isinstance(yr_or_rng, tuple) and len(yr_or_rng) == 2:
-            start_date, end_date = yr_or_rng
-            get_data_from_period(start_date, end_date)
-        else:
-            print("Error: For forex use --period YYYY-MM-DD,YYYY-MM-DD.")
+        if not isinstance(yr_or_rng, tuple):
+            error("For forex, use --period YYYY-MM-DD,YYYY-MM-DD.")
             sys.exit(1)
+
+        start_date, end_date = yr_or_rng
+        selected_frames = {tf: TIME_FRAMES[tf] for tf in time_frames}
+
+        from src.trading.data.data_gathering.OANDA import get_data_from_period
+        get_data_from_period(start_date, end_date, time_frames=selected_frames, pairs=tickers)
 
 
 start()
-    
+
+# Call this file from root dir using e.g: python scripts/generate_backtest_data.py --data forex --period 2025-01-01,2025-10-28 --timeframe H4,H1

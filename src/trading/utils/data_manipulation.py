@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 import pathlib
 import src.trading.utils.constants as constants
-from src.trading.utils.config import get_config_file_default, load_config
+from src.trading.utils.config import get_config_file_default, get_config_file_default2, load_config
 
 # Computes z-score standardization: (x - mean) / sd, ignoring NaNs
 def zscore_standardisation(indicator_values):
@@ -53,6 +53,12 @@ def get_data(directory):
 # Returns an array of all forex data frames on a given date for a given time frame. Currently only uses the default config file
 def get_all_forex_data_on_date():
     config = load_config(get_config_file_default())
+    data = get_data_for_timeframe_date(constants.OANDA_DATA_DIR, config["timeframe"], config["date"])
+    return data
+
+# Returns an array of all forex data frames on a given date for a given time frame. Currently only uses the default config file
+def get_all_forex_data_on_next_date():
+    config = load_config(get_config_file_default2())
     data = get_data_for_timeframe_date(constants.OANDA_DATA_DIR, config["timeframe"], config["date"])
     return data
 

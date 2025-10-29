@@ -273,4 +273,35 @@ def plot_candlestick_chart_with_analysis_periods(series, asset_name, time_interv
     print(f"Chart saved as: {filepath}")
     plt.show(block=False)
 
+def plot_volatiltiy_momentum_correlation_scatter(df, filepath, filename):
+    # Compute correlations with price_diff
+    corrs = df.corr()['price_diff'].drop('price_diff')
+
+    # Create subplots for three key indicators
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+    # Combined Score vs Price Difference
+    axes[0].scatter(df['combined_score'], df['price_diff'], alpha=0.7)
+    axes[0].set_title(f'Combined Score vs Price Diff (r={corrs["combined_score"]:.2f})')
+    axes[0].set_xlabel('Combined Score')
+    axes[0].set_ylabel('Price Difference')
+
+    # Standardized ATR Mean vs Price Difference
+    axes[1].scatter(df['std_atrs_mean'], df['price_diff'], alpha=0.7, color='orange')
+    axes[1].set_title(f'Std ATR Mean vs Price Diff (r={corrs["std_atrs_mean"]:.2f})')
+    axes[1].set_xlabel('Standardized ATR Mean')
+    axes[1].set_ylabel('Price Difference')
+
+    # Standardized StdDev Mean vs Price Difference
+    axes[2].scatter(df['std_std_dev_mean'], df['price_diff'], alpha=0.7, color='green')
+    axes[2].set_title(f'Std StdDev Mean vs Price Diff (r={corrs["std_std_dev_mean"]:.2f})')
+    axes[2].set_xlabel('Standardized StdDev Mean')
+    axes[2].set_ylabel('Price Difference')
+
+    # Final layout and save
+    plt.tight_layout()
+    fig.savefig(f"{filepath}/{filename}", dpi=300)
+    print(f"Chart saved as: {filepath}")
+    plt.show(block=False)
+
 

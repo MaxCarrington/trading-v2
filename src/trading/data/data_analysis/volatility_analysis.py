@@ -14,9 +14,7 @@ def analyse_period_volatility(series, lookback, asset, time_frame, date):
     standardised_std_dev = zscore_standardisation(std_dev)
 
     # Combine indicators into one composite measure
-    combined_score = std_atr_stddev(
-        standardised_atrs, standardised_std_dev
-    )
+    combined_score = zscore_standardisation(std_atr_stddev(standardised_atrs, standardised_std_dev))
 
     vol_classifications = classify_volatility(combined_score)
 

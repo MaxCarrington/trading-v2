@@ -1,9 +1,10 @@
+import sys
+
 from src.trading.data.data_analysis.mean_rev_analysis import get_series_mean_rev_stats, print_mean_rev_summary
 from src.trading.data.data_analysis.momentum_analysis import get_momentum_statistics, print_momentum_statistics
 from src.trading.data.data_analysis.volatility_analysis import analyse_period_volatility, print_volatility_analysis
 from src.trading.data.data_analysis.volume_analysis import combined_liquidity_analysis, print_liquidity_analysis
 from src.trading.utils.config import load_strategy_configs
-
 MINIMUM_STRATEGY_THRESHOLD = 50
 # Perform data analysis to generate mean-reversion, momentum, volatility and volume data
 def perform_analysis(series, asset, timeframe, date, is_forex=False):
@@ -44,17 +45,21 @@ def determine_best_strategy(momentum_stats, mean_rev_stats, volatility_stats=Non
     return strategy
 
 # A test to iterate through every data point in a series determining what type of pattern is being shown
+# 100 periods is needed as a minimum as hurst exponent calculation requires 100 minimum
 def rolling_analysis(series, asset, timeframe, date, min_periods=100):
     thresholds, analysis_params, setup_params, labels = load_strategy_configs()
-
     i = min_periods
     mean_rev_periods = []
     momentum_periods = []
-
+    volatility_stats = None  # Initialize to avoid UnboundLocalError
     while i < len(series):
         window = series.iloc[i - min_periods:i]
         momentum_stats = get_momentum_statistics(window, analysis_params["momentum"]["window_size"], asset, timeframe, date)
         mean_rev_stats = get_series_mean_rev_stats(window, asset, timeframe, date)
+        if volatility_stats is None:
+            # Only compute once, outside the regime loop
+            volatility_stats = analyse_period_volatility(series, analysis_params["volatility"]["lookback"], asset, timeframe, date)
+
         current_pattern = determine_best_strategy(momentum_stats, mean_rev_stats)
 
         start_idx = i
@@ -76,20 +81,16 @@ def rolling_analysis(series, asset, timeframe, date, min_periods=100):
         i += 1  # move to next starting point
 
     regime_periods = [
-                         (start, end, "mean_reversion") for (start, end) in mean_rev_periods
-                     ] + [
-                         (start, end, "momentum") for (start, end) in momentum_periods
-                     ]
-
+        (start, end, "mean_reversion") for (start, end) in mean_rev_periods
+    ] + [
+        (start, end, "momentum") for (start, end) in momentum_periods
+    ]
 
     return {
         "mean_reversion_periods": mean_rev_periods,
         "momentum_periods": momentum_periods,
-        "regime_periods": regime_periods
+        "regime_periods": regime_periods,
+        "volatility_stats": volatility_stats
     }
-
-
-
-
 
 
