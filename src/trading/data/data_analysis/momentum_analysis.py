@@ -40,7 +40,7 @@ def get_momentum_statistics(series, length_threshold, asset, time_frame, date):
 
     # --- Final score normalization ---
     combined_score = raw_score + bonus
-    normalized_score = round((combined_score + 1) / 2 * 100, 2)
+    normalised_score = round((combined_score + 1) / 2 * 100, 2)
 
     # --- Suitability tag ---
     if momentum_indication == "Momentum" and stat_score > 0.99:
@@ -61,7 +61,7 @@ def get_momentum_statistics(series, length_threshold, asset, time_frame, date):
     }
 
     return {
-        'normalised_score': normalized_score,
+        'normalised_score': normalised_score,
         'combined_score': combined_score,
         'component_scores': component_scores,
         'momentum_suitability': suitability,
@@ -73,7 +73,6 @@ def get_momentum_statistics(series, length_threshold, asset, time_frame, date):
         'time_frame': time_frame,
         'date': date
     }
-
 
 # Calculate the correlation between past and future returns of given (rolling) windows of a time series
 # and the dates of each window

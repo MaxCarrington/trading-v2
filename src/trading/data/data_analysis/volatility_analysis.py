@@ -6,7 +6,7 @@ from src.trading.utils.data_manipulation import zscore_standardisation
 
 # Function uses Average True Range, Standard Deviation
 # to determine the volatility over a given period
-def analyse_period_volatility(series, lookback, asset, time_frame, date):
+def get_volatility_statistics(series, lookback, asset, time_frame, date):
     std_dev = stddev_rolling_window(series, lookback)
 
     # Standardise ATR, and StdDev

@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import src.trading.utils.constants as constants
 import sys
-from src.trading.data.data_analysis.analysis import rolling_analysis
+from src.trading.data.data_analysis.analysis import find_periods_of_mean_rev_and_momentum
 from plotting.graphs import plot_volatiltiy_momentum_correlation_scatter
 from src.trading.utils.logger import info, warning
 
@@ -15,7 +15,7 @@ def generate_and_plot_volatility_momentum_correlation(data_keys, data_values, da
         else:
             info(f"Running rolling analysis for {pair} ({timeframe}) from {start_date.date()} to {end_date.date()}")
 
-        analysis = rolling_analysis(series, pair, timeframe, start_date)
+        analysis = find_periods_of_mean_rev_and_momentum(series, pair, timeframe, start_date)
         volatility_stats = analysis["volatility_stats"]
 
         combined_score = pad_to_length(volatility_stats["combined_score"], series.index)

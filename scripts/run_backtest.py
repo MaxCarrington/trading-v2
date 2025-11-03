@@ -107,9 +107,11 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier):
     for i in range(1, num_periods - 1):
 
         # 1) Build ONLY current-row inputs for the strategy
-        prev_rows = [df.iloc[i - 1] for df in data_list]
         curr_rows = [df.iloc[i] for df in data_list]
-        new_row_list = [row.to_dict() for row in prev_rows]
+        prev_rows = [df.iloc[i - 1] for df in data_list]
+        new_row_list = [
+            {**row.to_dict(), "Time": row.name} for row in prev_rows
+        ]
 
         # 2) Compute info (no future fields)
         portfolio_net_worth = balance + sum(current_pos[j] * curr_rows[j]['Open'] for j in range(num_series))
