@@ -44,42 +44,28 @@ def determine_momentum_or_mean_rev(momentum_stats=None, mean_rev_stats=None, vol
 
     return strategy
 
-def is_momentum(
-    momentum_stats, volatility_stats,
-    minimum_momentum_thresh = 55,
-    high_volatility_thresh = 70,
-    low_volatility_thresh = 30,
-    trade_high_volatility=False,
-    trade_w_volatility=True):
-
+def is_momentum(momentum_stats, volatility_stats, minimum_momentum_thresh=70, high_volatility_thresh = 70, low_volatility_thresh = 30, trade_high_volatility=False, trade_w_volatility=True):
     # Test for momentum, if trading with volatility in highly volatile periods
     has_momentum = momentum_stats["normalised_score"] > minimum_momentum_thresh
+    print(momentum_stats["normalised_score"])
     volatility_high = volatility_stats["combined_score"].iloc[-1] >= high_volatility_thresh
     volatility_low = volatility_stats["combined_score"].iloc[-1] <= low_volatility_thresh
-    #print(momentum_stats)
-    #sys.exit(1)
     # determines whether momentum trading is permitted based on the flags
     if not has_momentum:
         print("Momentum statistics not found.")
-        print(f"Momentum score: {momentum_stats['normalised_score']}")
         return False
+
     if trade_w_volatility:
         if volatility_high and trade_high_volatility:
             print("Momentum found, trading with high volatility")
-            print(f"Momentum score: {momentum_stats['normalised_score']}")
             return True
         elif volatility_low and not trade_high_volatility:
             print("Momentum found, trading with low volatility")
-            print(f"Momentum score: {momentum_stats['normalised_score']}")
             return True
         return False
     else:
         print("Momentum found, trading without volatility")
-        print(f"Momentum score: {momentum_stats['normalised_score']}")
         return True
-
-# place buy/sell logic here
-
 
 # A test to iterate through every data point in a series determining what type of pattern is being shown
 # 100 periods is needed as a minimum as hurst exponent calculation requires 100 minimum

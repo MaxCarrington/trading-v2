@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 from scipy.stats import pearsonr
 
@@ -7,63 +9,23 @@ from src.trading.data.stat_tests.hurst_exponent import calculate_hurst_exponent
 
 # Get the momentum statistical information from analysis
 def get_momentum_statistics(series, length_threshold, asset, time_frame, date):
-    log_returns = to_log_returns(series['Close'].dropna())
+    log_returns = to_log_returns(series['Close'].dropna().tail(75))
+
+    # find the optimal lookback window with strongest correlation signal
     rolling_correlations = calc_optimal_window_size(log_returns)
-    momentum_indication = check_len_for_momentum(length_threshold, rolling_correlations)
-    stat_score = statistical_score(series) / 100  # ∈ [0, 1]
 
-    # --- Regime weight ---
-    regime_weight = {
-        "Momentum": 1.0,
-        "Mean-Reversion": -1.0,
-        "None": 0.0,
-        "Insufficient Data": 0.0
-    }
+    # Use only optimal correlations for regime classification
+    optimal_corrs = rolling_correlations.get('correlations', [])
 
-    # --- Correlation diagnostics ---
-    strength = abs(rolling_correlations.get('best_correlation'))
-    max_windows = rolling_correlations.get('max_possible_windows', 1)
-    if max_windows == 0:
-        reliability = 0.0
-    else:
-        reliability = min(1.0, len(rolling_correlations.get('correlations', [])) / max_windows)
+    # classify regime (Momentum/Mean-Reversion/None) based on correlation outcomes
+    momentum_indication = check_len_for_momentum(length_threshold, {'correlations': optimal_corrs})
 
-    confidence = min(0.4 * strength + 0.6 * reliability, 1.0)
+    #print(f"momentum indication:{momentum_indication}")
 
-    # --- Base score ---
-    raw_score = stat_score * regime_weight.get(momentum_indication, 0.0) * confidence
-
-    # --- Bonus logic ---
-    bonus = 0
-    if momentum_indication == "Momentum" and stat_score > 0.9 and confidence > 0.8:
-        bonus = 0.1  # modest bonus for strong agreement
-
-    # --- Final score normalization ---
-    combined_score = raw_score + bonus
-    normalised_score = round((combined_score + 1) / 2 * 100, 2)
-
-    # --- Suitability tag ---
-    if momentum_indication == "Momentum" and stat_score > 0.99:
-        suitability = "Very high"
-    elif momentum_indication == "Mean-Reversion" and stat_score < 0.01:
-        suitability = "Very low"
-    elif momentum_indication == "Momentum" and stat_score >= 0.5:
-        suitability = "Moderate"
-    else:
-        suitability = "Low"
-
-    # --- Component breakdown ---
-    component_scores = {
-        'stat_score': stat_score,
-        'regime_weight': regime_weight.get(momentum_indication, 0.0),
-        'confidence': confidence,
-        'bonus': bonus
-    }
+    normalised_score, suitability = generate_momentum_score(momentum_indication, rolling_correlations)
 
     return {
         'normalised_score': normalised_score,
-        'combined_score': combined_score,
-        'component_scores': component_scores,
         'momentum_suitability': suitability,
         'momentum_indication': momentum_indication,
         'lookback': rolling_correlations.get('lookback'),
@@ -73,6 +35,24 @@ def get_momentum_statistics(series, length_threshold, asset, time_frame, date):
         'time_frame': time_frame,
         'date': date
     }
+
+# Generates a momentum score
+def generate_momentum_score(momentum_indication, rolling_correlations):
+    strength = abs(rolling_correlations.get('best_correlation', 0.0))
+
+    # Only score if regime indicates Momentum
+    if momentum_indication == "Momentum":
+        normalised_score = round(strength * 100, 2)
+        suitability = "Momentum"
+    elif momentum_indication == "Mean-Reversion":
+        normalised_score = round((1 - strength) * 100, 2)
+        suitability = "Mean-Reversion"
+    else:
+        normalised_score = 0
+        suitability = "None"
+
+    return normalised_score, suitability
+
 
 # Calculate the correlation between past and future returns of given (rolling) windows of a time series
 # and the dates of each window
@@ -104,7 +84,7 @@ def calculate_rolling_correlations(series, window_size, significance_level=0.05)
 
 # Finds the optimal rolling window size that yields the highest significant correlation
 # between past and future log returns.
-def calc_optimal_window_size(series, start_window_size = 10, end_window_size = 40, step_size = 2, significance_level = 0.05):
+def calc_optimal_window_size(series, start_window_size = 10, end_window_size = 60, step_size = 2, significance_level = 0.05):
     best_correlation = -np.inf
     optimal_window_size = None
     correlation_result = {}
@@ -132,18 +112,25 @@ def calc_optimal_window_size(series, start_window_size = 10, end_window_size = 4
 
 # Classifies regime based on proportion of positive vs. negative correlations.
 def check_len_for_momentum(length_thresh, correlation_dict):
-    correlations = np.array(correlation_dict.get('correlations', []))
+    # Extract correlation values from dictionary (default to empty list if missing)
+    correlations = np.array(correlation_dict.get('correlations', []), dtype=float)
+
+    # If no correlations are available, return insufficient data
     if len(correlations) == 0:
         return "Insufficient Data"
 
+    # Count how many correlations are positive (momentum) and negative (mean-reversion)
     num_positives = np.sum(correlations > 0)
     num_negatives = np.sum(correlations < 0)
     total = len(correlations)
 
+    # If positives exceed threshold proportion, classify as Momentum
     if num_positives >= total * length_thresh:
         return "Momentum"
+    # If negatives exceed threshold proportion, classify as Mean-Reversion
     elif num_negatives >= total * length_thresh:
         return "Mean-Reversion"
+    # Otherwise, no clear regime detected
     else:
         return "None"
 
@@ -160,10 +147,8 @@ def check_stationarity(series, significance_level=0.05):
 def statistical_score(series):
     adf_result = perform_adf_test(series['Close'])
     hurst_result = calculate_hurst_exponent(series['Close'])
-
     is_stationary = adf_result.get('is_stationary', True)
     hurst_class = hurst_result.get('classification', 'undefined')
-
     # Scoring logic
     if not is_stationary and hurst_class == 'trending':
         score = 100  # strongest momentum signal

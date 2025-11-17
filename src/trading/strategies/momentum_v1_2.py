@@ -55,14 +55,24 @@ def momentum_strategy_v1_2(
     limitprice2 = [0] * num_series
 
     if store["iter"] >= minimum_data_points:
-        for symbol, row in zip(series, new_row_list):
-            if store["iter"] >= MINIMUM_DAYS_FOR_ANALYSIS and store["iter"] >= store["next_momentum_check"][symbol]:
-                store, should_trade = analyse_momentum(
-                    store, symbol, params, timeframe, date,
-                    trade_high_volatility=False,
-                    trade_w_volatility=True
-                )
-                print(should_trade)
+        for i, (symbol, row) in enumerate(zip(series, new_row_list)):
+            store, should_trade = analyse_momentum(
+                store, symbol, params, timeframe, date,
+                trade_high_volatility=False,
+                trade_w_volatility=True
+            )
+
+            if should_trade:
+                market[i] = pos_size
+
+                trade_record = {
+                    "time": row["Time"],
+                    "symbol": symbol,
+                    "action": "BUY" if pos_size > 0 else "SELL",
+                    "size": pos_size,
+                    "price": row["Close"]
+                }
+                store["trade_records"][symbol].append(trade_record)
 
     return {
         "marketOrders":  market,
@@ -76,100 +86,14 @@ def momentum_strategy_v1_2(
 
 def analyse_momentum(store, symbol, params, timeframe, date, trade_high_volatility, trade_w_volatility, high_volatility_thresh = 70, low_volatility_thresh = 30):
     df = store["ohlcv"][symbol]
-    momentum_window = get_momentum_window(df, store, symbol)
-    momentum_stats = get_momentum_statistics(momentum_window, params['p-val_len_thresh'][symbol], symbol, timeframe, date)
+    momentum_stats = get_momentum_statistics(df, params['momentum_len_thresh'][symbol], symbol, timeframe, date)
     store["momentum_score"][symbol] = momentum_stats["normalised_score"]
 
-    vol_window = get_volatility_window(df, store, symbol)
-    volatility_stats = get_volatility_statistics(vol_window, params["lookback"][symbol], symbol, timeframe, date)
-    vol_score = volatility_stats["combined_score"].iloc[-1]
+    volatility_stats = get_volatility_statistics(df, params["lookback"][symbol], symbol, timeframe, date)
 
-    if vol_score <= low_volatility_thresh and trade_high_volatility == False and trade_w_volatility and not store["volatility_regime_active"][symbol]:
-        store["volatility_regime_active"][symbol] = True
-        store["volatility_regime_start_index"][symbol] = store["iter"]
-
-    elif vol_score >= high_volatility_thresh and trade_high_volatility == True and trade_w_volatility and not store["volatility_regime_active"][symbol]:
-        store["volatility_regime_active"][symbol] = True
-        store["volatility_regime_start_index"][symbol] = store["iter"]
-
-    elif vol_score >= high_volatility_thresh and trade_high_volatility and trade_w_volatility and store["volatility_regime_active"][symbol]:
-        store["volatility_regime_active"][symbol] = False
-        store["volatility_regime_end_index"][symbol] = store["iter"]
-        store["volatility_regime_history"][symbol].append({
-            "start": store["volatility_regime_start_index"][symbol],
-            "end": store["iter"]
-        })
-
-    elif vol_score <= low_volatility_thresh and trade_high_volatility == False and trade_w_volatility and store["volatility_regime_active"][symbol]:
-        store["volatility_regime_active"][symbol] = False
-        store["volatility_regime_end_index"][symbol] = store["iter"]
-        store["volatility_regime_history"][symbol].append({
-            "start": store["volatility_regime_start_index"][symbol],
-            "end": store["iter"]
-        })
-
-    momentum_found = is_momentum(momentum_stats, volatility_stats, trade_high_volatility, trade_w_volatility)
-
-    if momentum_found and not store["regime_active"][symbol]:
-        # New regime started
-        store["regime_active"][symbol] = True
-        store["regime_start_index"][symbol] = store["iter"]
-
-    elif not momentum_found and store["regime_active"][symbol]:
-        # Regime ended
-        store["regime_active"][symbol] = False
-        store["regime_end_index"][symbol] = store["iter"]
-        store["regime_history"][symbol].append({
-            "start": store["regime_start_index"][symbol],
-            "end": store["iter"]
-        })
+    momentum_found = is_momentum(momentum_stats, volatility_stats, trade_high_volatility=trade_high_volatility, trade_w_volatility=trade_w_volatility)
 
     return store, momentum_found
-
-def get_momentum_window(df, store, symbol, min_length=100, max_length=300):
-    end = store["iter"]
-
-    # If a regime just ended, use that window
-    if "regime_end_index" in store and store["regime_end_index"][symbol] is not None:
-        start = store["regime_end_index"][symbol] - min_length
-        start = max(0, start)
-        return df.iloc[start:end]
-
-    # If a regime is active, use from start of regime to now
-    if store["regime_active"][symbol]:
-        start = store["regime_start_index"][symbol]
-        if end - start >= min_length:
-            return df.iloc[start:end]
-        else:
-            # Extend backward to meet min length
-            start = max(0, end - min_length)
-            return df.iloc[start:end]
-
-    # No regime info — fallback to tail
-    return df.iloc[-min(max_length, len(df)):]
-
-def get_volatility_window(df, store, symbol, min_length=20, default_length=50):
-    end = store["iter"]
-
-    # If momentum is active, use regime start to now
-    if store["regime_active"].get(symbol, False):
-        start = store["regime_start_index"].get(symbol, 0)
-        if end - start >= min_length:
-            return df.iloc[start:end]
-        else:
-            return df.iloc[max(0, end - min_length):end]
-
-    # If momentum just ended, use last regime window
-    elif store.get("regime_end_index", {}).get(symbol) is not None:
-        start = store["regime_start_index"].get(symbol, 0)
-        end_regime = store["regime_end_index"][symbol]
-        if end_regime - start >= min_length:
-            return df.iloc[start:end_regime]
-        else:
-            return df.iloc[max(0, end_regime - min_length):end_regime]
-
-    # Fallback: use tail slice
-    return df.iloc[-default_length:]
 
 def initialise_store(series, default_lookback=20):
     cols = ["Open", "High", "Low", "Close", "Volume"]
@@ -187,18 +111,6 @@ def initialise_store(series, default_lookback=20):
         "count":           {s: 0     for s in series},
         "momentum_score":  {s: 0 for s in series},
         "volatility_score": {s: 0 for s in series},
-
-        "regime_active":         {s: False for s in series},            # Tracks whether the symbol is currently in a momentum regime
-        "regime_start_index":    {s: None for s in series},
-        "regime_end_index":      {s: None for s in series},
-        "regime_history":        {s: [] for s in series},
-        "next_momentum_check":   {s: 0 for s in series},
-
-        "volatility_regime_active": {s: False for s in series},
-        "volatility_regime_start_index": {s: None for s in series},
-        "volatility_regime_end_index": {s: None for s in series},
-        "volatility_regime_history": {s: [] for s in series},
-
     }
 
 def update_store(store, new_row_list, series):

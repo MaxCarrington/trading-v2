@@ -203,6 +203,7 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier):
                 pnl_lists[j].append(exit_pnls[j])
             break
 
+    print(store["trade_records"])
     # Final day: close out with slippage (mirror R)
     final_exit_pnls = []
     final_exit_values = []

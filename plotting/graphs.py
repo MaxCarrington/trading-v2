@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 import pandas as pd
 import mplfinance as mpf
 
@@ -15,7 +17,7 @@ _REGIME_COLORS = {
 }
 
 # Plots a candle stick chart for a time series at a particular time interval on a certain date
-def plot_candlestick_chart(series, asset_name, time_interval, date, data_path=None):
+def plot_candlestick_chart(asset_name, time_interval, date, data_path=None, series=None):
     if data_path is None:
         data = series
     else:
@@ -303,5 +305,10 @@ def plot_volatiltiy_momentum_correlation_scatter(df, filepath, filename):
     fig.savefig(f"{filepath}/{filename}", dpi=300)
     print(f"Chart saved as: {filepath}")
     plt.show(block=False)
+
+# How to plot a candlestick chart, change data path for a different chart
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+data_csv = f"{PROJECT_ROOT}/data/raw/oanda/forex/AUD_USD/2025/D/merged/AUD_USD_2025.csv"
+plot_candlestick_chart("AUD_USD", "D", "2025", data_path=data_csv)
 
 

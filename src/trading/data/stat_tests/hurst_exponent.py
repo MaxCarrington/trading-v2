@@ -36,9 +36,9 @@ def calculate_hurst_exponent(series):
 
     if h < 0.45:
         classification = "mean_reverting"
-    elif 0.45 <= h <= 0.55:
+    elif 0.45 <= h < 0.50:
         classification = "random_walk"
-    elif h > 0.55:
+    elif h > 0.50:
         classification = "trending"
     else:
         classification = "undefined"
