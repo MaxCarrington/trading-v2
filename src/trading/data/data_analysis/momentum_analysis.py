@@ -53,7 +53,6 @@ def generate_momentum_score(momentum_indication, rolling_correlations):
 
     return normalised_score, suitability
 
-
 # Calculate the correlation between past and future returns of given (rolling) windows of a time series
 # and the dates of each window
 def calculate_rolling_correlations(series, window_size, significance_level=0.05):
@@ -230,3 +229,19 @@ def print_momentum_statistics(stats_dict):
     print(f"\n🧠 Verdict: {verdict}")
     print("-" * 50)
 
+# Returns the direction of momentum based on previous momentum periods
+def get_momentum_direction(df):
+    net_ret = calculate_net_return(df)
+    if net_ret is None:
+        raise ValueError("Net Return cannot be calculated as is none")
+    else:
+        direction = 1 if net_ret > 0 else -1
+        return direction, net_ret
+
+# Calculate the new return from a data slice, based on a dataframe and an array of indices
+def calculate_net_return(period_df):
+    if period_df.empty:
+        return None
+    start_price = period_df["Close"].iloc[0]
+    end_price   = period_df["Close"].iloc[-1]
+    return (end_price - start_price) / start_price

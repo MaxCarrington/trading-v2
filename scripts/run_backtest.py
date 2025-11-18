@@ -1,6 +1,8 @@
 import sys
-import pandas as pd
+from pathlib import Path
 
+import pandas as pd
+import os
 from src.trading.utils.logger import start_log
 from src.trading.utils.config import load_config, get_config_file_default, get_initial_capital
 
@@ -203,7 +205,6 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier):
                 pnl_lists[j].append(exit_pnls[j])
             break
 
-    print(store["trade_records"])
     # Final day: close out with slippage (mirror R)
     final_exit_pnls = []
     final_exit_values = []
@@ -228,6 +229,26 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier):
         pnl_dfs.append(df)
 
     k = round(100 * pos_days / max(1, (num_periods - 2)))
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    # --- Collect and export trade records ---
+    all_trades = []
+    for symbol, trade_rec_obj in store["trade_records"].items():
+        df = trade_rec_obj.trade_records.copy()
+        df["symbol"] = symbol
+        all_trades.append(df)
+
+    if all_trades:
+        trades_df = pd.concat(all_trades, ignore_index=True)
+        print(trades_df.tail())  # print last few trades neatly
+
+        # Optional: export to CSV
+        trades_csv_path = f"{PROJECT_ROOT}/results/backtest_results/trade_records.csv"
+        os.makedirs(os.path.dirname(trades_csv_path), exist_ok=True)
+        trades_df.to_csv(trades_csv_path, index=False)
+        print(f"Trade records exported to {trades_csv_path}")
+    else:
+        print("No trade records generated.")
+
     return {"pnlList": pnl_dfs, "netWorthList": portfolio_net_worth_list, "k": k}
 
 

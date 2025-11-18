@@ -17,10 +17,10 @@ def take_profit_atr(direction, entry_price, atr_value, multiplier=2):
     return entry_price + offset if direction > 0 else entry_price - offset
 
 # Calculate take-profit price for a given trade type and entry price
-def calculate_take_profit(trade_type, entry_price):
+def fixed_take_profit(trade_type, entry_price, multiplier=0.025):
     if trade_type == "buy":
-        exit_price = entry_price * 1.25
+        exit_price = entry_price * (1 + multiplier)
     else:  # must be a sell
-        exit_price = entry_price * 0.75
+        exit_price = entry_price * (1 - multiplier)
     return exit_price
 

@@ -27,10 +27,10 @@ def max_daily_loss_of_trade(current_price, entry_price, current_balance, positio
     return loss > per_trade_loss
 
 # Calculate stop-loss price at half the take-profit distance
-def calculate_stop_loss(trade_type, entry_price):
-    if trade_type == "buy":
-        stop_loss = entry_price * 0.875
+def fixed_stop_loss(trade_type, entry_price, multiplier=0.0125):
+    if trade_type == 1:
+        stop_loss = entry_price * (1 - multiplier)
     else:  # must be a sell
-        stop_loss = entry_price * 1.125
+        stop_loss = entry_price * (1 + multiplier)
     return stop_loss
 

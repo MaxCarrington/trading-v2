@@ -6,6 +6,7 @@ TestResults/
 .idea/
 tests/
 reports/
+results/
 
 # Python cache files
 __pycache__/
