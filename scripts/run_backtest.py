@@ -1,3 +1,4 @@
+import datetime
 import sys
 from pathlib import Path
 
@@ -93,7 +94,7 @@ def find_pnl(prices, old_pos, market_order,
     }
 
 # Backtester that simulates a live environment for multiple series
-def backtest_live(data_list, strategy_function, params, slippage_multiplier):
+def backtest_live(data_list, strategy_function, params, slippage_multiplier, strategy_name):
     num_periods = len(data_list[0])  # Assumes all series have same number of rows
     num_series = len(data_list)
     balance = get_initial_capital()
@@ -234,7 +235,6 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier):
     all_trades = []
     for symbol, trade_rec_obj in store["trade_records"].items():
         df = trade_rec_obj.trade_records.copy()
-        df["symbol"] = symbol
         all_trades.append(df)
 
     if all_trades:
@@ -242,7 +242,7 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier):
         print(trades_df.tail())  # print last few trades neatly
 
         # Optional: export to CSV
-        trades_csv_path = f"{PROJECT_ROOT}/results/backtest_results/trade_records.csv"
+        trades_csv_path = os.path.join(PROJECT_ROOT, "results", "backtest_results", strategy_name, f"trade_records_{datetime.time}.csv")
         os.makedirs(os.path.dirname(trades_csv_path), exist_ok=True)
         trades_df.to_csv(trades_csv_path, index=False)
         print(f"Trade records exported to {trades_csv_path}")

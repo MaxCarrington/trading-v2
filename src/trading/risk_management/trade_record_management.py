@@ -22,104 +22,115 @@ class TradeRecords:
             "take_profit": pd.Series(dtype="float64"),
             "stop_loss": pd.Series(dtype="float64"),
             "holding_duration": pd.Series(dtype="int32"),  # or timedelta64 if time-based
+            "max_holding_duration": pd.Series(dtype="float64"),
             "open": pd.Series(dtype="bool"),
             "closed": pd.Series(dtype="bool"),
             "cancelled": pd.Series(dtype="bool"),
+            "pending_close": pd.Series(dtype="bool"),
+            "pending_close_reason": pd.Series(dtype="string"),
             "profit": pd.Series(dtype="float64"),
             "normalised_score": pd.Series(dtype="float64"),
-            "volatiltiy_indicator": pd.Series(dtype="float64"),
+            "volatility_indicator": pd.Series(dtype="float64"),
             "rsi": pd.Series(dtype="float64"),
             "moving_average_type": pd.Series(dtype="string"),
-            "moving_average_value": pd.Series(dtype="float64"),
+            "moving_average_value": pd.Series(dtype="float64")
         })
         self.kelly_sizers = {}
         self.trade_index = 0
 
     def add_new_trade_record(self, asset, time_frame, date, pos_size,
-                             trade_type, take_profit, stop_loss, holding_duration,
-                             normalised_score, volatiltiy_indicator, rsi, moving_average_type,
-                             moving_average_value, limitPrice=None):
+                             trade_type, take_profit, stop_loss, max_holding_duration,
+                             normalised_score, volatility_indicator, rsi, moving_average_type,
+                             moving_average_value, entry_date=None, entry_price=None, limitPrice=None):
         # Create a new trade record with all required information about a trade
         self.trade_index += 1
         new_trade = {
             "trade_id": self.trade_index,
             "asset": asset,
             "time_frame": time_frame,
-            "datetime": pd.to_datetime(date),
-            "entry_date": date,
+            "datetime": pd.to_datetime(date),  # signal timestamp
+            "entry_date": pd.to_datetime(entry_date) if entry_date is not None else pd.to_datetime(date),
             "exit_date": None,
-            "entry_price": limitPrice if limitPrice is not None else None,
+            "entry_price": entry_price if entry_price is not None else (limitPrice if limitPrice is not None else None),
             "exit_price": None,
             "pos_size": pos_size,
             "trade_type": trade_type,
             "is_limit": limitPrice is not None,
             "take_profit": take_profit,
             "stop_loss": stop_loss,
-            "holding_duration": holding_duration,
+            "holding_duration": 0,
+            "max_holding_duration": max_holding_duration,
             "open": True,
             "closed": False,
             "cancelled": False,
-            "profit": None,
+            "pending_close": False,
+            "pending_close_reason": None,
+            "profit": 0,
             "normalised_score": normalised_score,
-            "volatiltiy_indicator": volatiltiy_indicator,
+            "volatility_indicator": volatility_indicator,
             "rsi": rsi,
             "moving_average_type": moving_average_type,
-            "moving_average_value": moving_average_value,
+            "moving_average_value": moving_average_value
         }
+
         # Add the new trade record to the data frame of trade records
         self.trade_records = pd.concat(
             [self.trade_records, pd.DataFrame([new_trade])],
             ignore_index=True
         )
 
-    # Adjusts open positions based on holding period, take-profit, and stop-loss conditions
-    def adjust_positions(self, store, series_index, holding_period, position_size, todays_open, prompts_on=False):
-        adjusted_positions = 0
-        close = self.check_close_positions(store, series_index, holding_period, position_size, todays_open, current_pos=None)
-        store = close["store"]
+    # Detect exit conditions for open trades (stop-loss, take-profit, max holding duration).
+    # Mark trades as pending_close today, but and pass a position adjustment to close trade
+    def adjust_positions(self, todays_high, todays_low):
+        pos_adjustment = 0
 
-        if close["position"]:
-            if close["trade_type"] == "buy":
-                adjusted_positions = -close["size"]
-                if prompts_on:
-                    print(f"Series {series_index}: holding period {holding_period} reached, "
-                          f"{close['size']} unit(s) sold to close {close['trade_type']} trade")
-            else:
-                adjusted_positions = close["size"]
-                if prompts_on:
-                    print(f"Series {series_index}: holding period {holding_period} reached, "
-                          f"{close['size']} unit(s) bought to close {close['trade_type']} trade")
-        else:
-            take_profits = self.check_take_profits(store, todays_open, series_index, prompts_on)
-            positions = take_profits["position_size"]
-            store = take_profits["store"]
-            if positions is not None and sum(positions) != 0:
-                adjusted_positions += sum(positions)
+        for idx, trade in self.trade_records[self.trade_records["open"]].iterrows():
+            # Increment holding duration
+            self.trade_records.at[idx, "holding_duration"] += 1
 
-        stop_losses = self.check_stop_losses_hit(store, todays_open, series_index, prompts_on)
-        positions = stop_losses["position_size"]
-        store = stop_losses["store"]
-        if positions is not None and sum(positions) != 0:
-            adjusted_positions += sum(positions)
+            trade_type = 1 if trade["trade_type"] == "buy" else -1
+            pos_size = trade["pos_size"]
 
-        return {"updated_store": store, "pos": adjusted_positions}
+            # Take-profit detection
+            if (trade_type == 1 and todays_high >= trade["take_profit"]) or \
+                    (trade_type == -1 and todays_low <= trade["take_profit"]):
+                self.trade_records.at[idx, "pending_close"] = True
+                self.trade_records.at[idx, "pending_close_reason"] = "take_profit"
+                pos_adjustment += -pos_size if trade_type == 1 else pos_size
 
-    # Closes a specific trade record and updates its exit details
-    def close_trade_record(self, trade_id, exit_price, exit_date):
-        mask = self.df["trade_id"] == trade_id
-        if mask.any():
-            self.df.loc[mask, "closed"] = True
-            self.df.loc[mask, "exit_price"] = exit_price
-            self.df.loc[mask, "exit_date"] = exit_date
-            # calculate profit
-            entry_price = self.df.loc[mask, "entry_price"].values[0]
-            pos_size = self.df.loc[mask, "pos_size"].values[0]
-            trade_type = self.df.loc[mask, "trade_type"].values[0]
-            if trade_type == "buy":
-                profit = (exit_price - entry_price) * pos_size
-            else:
-                profit = (entry_price - exit_price) * pos_size
-            self.df.loc[mask, "profit"] = profit
+            # Stop-loss detection
+            if (trade_type == 1 and todays_low <= trade["stop_loss"]) or \
+                    (trade_type == -1 and todays_high >= trade["stop_loss"]):
+                self.trade_records.at[idx, "pending_close"] = True
+                self.trade_records.at[idx, "pending_close_reason"] = "stop_loss"
+                pos_adjustment += -pos_size if trade_type == 1 else pos_size
+
+            # Max holding duration detection
+            if self.trade_records.at[idx, "holding_duration"] >= trade["max_holding_duration"]:
+                self.trade_records.at[idx, "pending_close"] = True
+                self.trade_records.at[idx, "pending_close_reason"] = "max_hold"
+                pos_adjustment += -pos_size if trade_type == 1 else pos_size
+
+        return pos_adjustment
+
+    # Execute closure of trades flagged as pending_close.
+    # Called at the start of each iteration, before adjust_positions.
+    def close_trade_records(self, todays_open, todays_date, prompts_on=False):
+        for idx, trade in self.trade_records[self.trade_records["pending_close"]].iterrows():
+            self.trade_records.at[idx, "exit_price"] = todays_open
+            self.trade_records.at[idx, "exit_date"] = todays_date
+            self.trade_records.at[idx, "open"] = False
+            self.trade_records.at[idx, "closed"] = True
+            self.trade_records.at[idx, "pending_close"] = False
+
+            # Calculate profit
+            trade_type = 1 if trade["trade_type"] == "buy" else -1
+            entry_price = trade["entry_price"]
+            pos_size = trade["pos_size"]
+
+            profit = (todays_open - entry_price) * pos_size if trade_type == 1 \
+                else (entry_price - todays_open) * pos_size
+            self.trade_records.at[idx, "profit"] = profit
 
     # Adds exit prices to closed trades and calculates profit or loss
     def add_exit_price(self, store, series_index, new_row_list):
@@ -326,3 +337,6 @@ class TradeRecords:
                 store = close_trade(store, series_index, trade_record)
 
         return {"position_size": [position_size], "store": store}
+
+    def remove_timezone(dt):
+        return dt.replace(tzinfo=None)

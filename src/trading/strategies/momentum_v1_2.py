@@ -49,7 +49,7 @@ def momentum_strategy_v1_2(
     # Update store with the *previous* bar per series
     store = update_store(store, new_row_list, series)
     pos_size = 1 # -> CHANGE THIS
-    holding_duration = 10 # CHANGE THIS TOO
+    max_holding_duration = 20# CHANGE THIS TOO
     num_series = len(series)
     market      = [0] * num_series
     limit1      = [0] * num_series
@@ -57,25 +57,50 @@ def momentum_strategy_v1_2(
     limitprice1 = [0] * num_series
     limitprice2 = [0] * num_series
 
+    prompts = False
+
     if store["iter"] >= minimum_data_points:
         for i, (symbol, row) in enumerate(zip(series, new_row_list)):
-            if store["pending_trades"][symbol] != 0:
+            # Close existing trades
+            store["trade_records"][symbol].close_trade_records(
+                todays_open=row["Open"],
+                todays_date=row["Time"].replace(tzinfo=None),
+                prompts_on=prompts
+            )
+
+            # Adjust positions
+            pos_adjustment = store["trade_records"][symbol].adjust_positions(
+                todays_high=row["High"],
+                todays_low=row["Low"]
+            )
+            market[i] += pos_adjustment
+
+            # --- Phase 1: Execute pending trade at today's open ---
+            if store["pending_trades"][symbol] != 0 and store["pending_entry_date"][symbol] is not None:
+                entry_price = row["Open"]  # today's open
                 store["trade_records"][symbol].add_new_trade_record(
                     asset=symbol,
                     time_frame=timeframe,
-                    date=store["ohlcv"][symbol].index[-2],
+                    date=row["Time"].replace(tzinfo=None),  # when the signal was generated
+                    entry_price=row["Open"],  # execution price
                     pos_size=pos_size,
-                    trade_type= "Buy" if store["pending_trades"][symbol] == 1 else "Sell", # Must be a sell if its not a buy
+                    trade_type="Buy" if store["pending_trades"][symbol] == 1 else "Sell",
                     take_profit=fixed_take_profit(store["pending_trades"][symbol], row["Open"]),
                     stop_loss=fixed_stop_loss(store["pending_trades"][symbol], row["Open"]),
-                    holding_duration=holding_duration,
+                    max_holding_duration=max_holding_duration,
                     normalised_score=store["pending_normalised_score"][symbol],
-                    volatiltiy_indicator=0,  # NEED TO ADD THIS FUNCTIONALITY AND THE BELOWS
+                    volatility_indicator=0,
                     rsi=0,
                     moving_average_type=0,
                     moving_average_value=0
                 )
 
+                # Reset pending trade after execution
+                store["pending_trades"][symbol] = 0
+                store["pending_entry_date"][symbol] = None
+                store["pending_normalised_score"][symbol] = 0
+
+            # --- Phase 2: Detect new signals and mark pending trade for tomorrow ---
             store, should_trade, normalised_score = analyse_momentum(
                 store, symbol, params, timeframe, date,
                 trade_high_volatility=False,
@@ -83,36 +108,39 @@ def momentum_strategy_v1_2(
             )
 
             if should_trade:
-                store["current_momentum_periods"][symbol].append(len(store["ohlcv"][symbol]) - 1)  # If momentum has been found, update the store to shown this
-                market[i] = pos_size
-
+                store["current_momentum_periods"][symbol].append(len(store["ohlcv"][symbol]) - 1)
                 if len(store["current_momentum_periods"][symbol]) > 2:
                     start = store["current_momentum_periods"][symbol][0]
                     end = store["current_momentum_periods"][symbol][-1]
 
                     df_slice = store["ohlcv"][symbol].iloc[start:end + 1]
-
                     direction, net_ret = get_momentum_direction(df_slice)
-                    if direction == 1 and normalised_score > momentum_score_thresh:    # Buy if direction is trending upwards and momentum score threshold is reached
+
+                    if direction == 1 and normalised_score > momentum_score_thresh:
                         print(f"BUY SIGNAL. Normalised score: {normalised_score}")
-                        market[i] = pos_size
+                        market[i] += pos_size
                         store["pending_trades"][symbol] = 1
+                        store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
                         store["pending_normalised_score"][symbol] = normalised_score
-                    elif direction == -1 and normalised_score > momentum_score_thresh: # Sell if direction is trending downwards and momentum score threshold is reached
+
+                    elif direction == -1 and normalised_score > momentum_score_thresh:
                         print(f"SELL SIGNAL. Normalised score: {normalised_score}")
+                        market[i] -= pos_size
                         store["pending_trades"][symbol] = -1
+                        store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
                         store["pending_normalised_score"][symbol] = normalised_score
+
                     else:
-                        store["pending_trades"][symbol] = 0 # As momentum threshold has not been reached, reset pending trades as there are none
+                        store["pending_trades"][symbol] = 0
+                        store["pending_entry_date"][symbol] = None
                         store["pending_normalised_score"][symbol] = 0
 
             else:
-                if store["current_momentum_periods"][symbol]: # If there have been any periods of momentum
-                    store["previous_momentum_periods"][symbol].append(
-                        store["current_momentum_periods"][symbol]
-                    )
-                    store["current_momentum_periods"][symbol] = [] # Empty current momentum periods as non momentum is currently being exhibited
-                store["pending_trades"][symbol] = 0 # As no momentum found, reset pending trades as there are none
+                if store["current_momentum_periods"][symbol]:
+                    store["previous_momentum_periods"][symbol].append(store["current_momentum_periods"][symbol])
+                    store["current_momentum_periods"][symbol] = []
+                store["pending_trades"][symbol] = 0
+                store["pending_entry_date"][symbol] = None
                 store["pending_normalised_score"][symbol] = 0
 
     return {
@@ -154,7 +182,8 @@ def initialise_store(series, default_lookback=20):
         "current_momentum_periods": {s: [] for s in series},
         "previous_momentum_periods": {s: [] for s in series},
         "pending_normalised_score": {s: [] for s in series},
-        "pending_trades": {s: [] for s in series}
+        "pending_trades": {s: [] for s in series},
+        "pending_entry_date": {s: None for s in series},
     }
 
 def update_store(store, new_row_list, series):

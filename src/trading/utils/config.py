@@ -1,18 +1,20 @@
-import yaml
+import yaml, os
 from pathlib import Path
 from src.trading.utils.logger import log
 
-CONFIG_FILE_DEFAULT = Path(__file__).resolve().parents[3] / "configs" / "backtest_config.yaml"
+CONFIG_FILE_DEFAULT = os.path.join(Path(__file__).resolve().parents[3], "configs", "backtest_config.yaml")
 
-CONFIG_FILE_DEFAULT_2 = Path(__file__).resolve().parents[3] / "configs" / "backtest_config2.yaml"
+CONFIG_FILE_DEFAULT_2 = os.path.join(Path(__file__).resolve().parents[3], "configs", "backtest_config2.yaml")
 # Load YAML configs
 def load_strategy_configs():
-    root = Path(__file__).resolve().parents[3] / "configs"
+    root = os.path.join(Path(__file__).resolve().parents[3], "configs")
 
-    thresholds = load_config(root / "strategy_thresholds.yaml")
-    analysis_params = load_config(root / "analysis_parameters.yaml")
-    setup_params = load_config(root / "strategy_setup.yaml")
-    labels = load_config(root / "strategy_labels.yaml").get("labels", {})
+    thresholds = load_config(os.path.join(root, "strategy_thresholds.yaml"))
+    analysis_params = load_config(os.path.join(root, "analysis_parameters.yaml"))
+    setup_params = load_config(os.path.join(root , "strategy_setup.yaml"))
+    config_path = os.path.join(root, "strategy_labels.yaml")
+    config = load_config(config_path)
+    labels = config.get("labels", {})
 
     return thresholds, analysis_params, setup_params, labels
 

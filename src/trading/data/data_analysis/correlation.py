@@ -85,9 +85,10 @@ def generate_and_plot_volatility_momentum_correlation(data_keys, data_values, da
             for feature, corr in correlations.sort_values(ascending=False).items():
                 info(f"{feature}: {corr:.4f}")
             if end_date is not None:
-                filepath = f"{constants.PRICE_VOLATILITY_CORR_DIR}/{start_date.date()}-{end_date.date()}/{timeframe}"
+                filepath = os.path.join(constants.PRICE_VOLATILITY_CORR_DIR,f"{start_date.date()}-{end_date.date()}",timeframe)
+
             else:
-                filepath = f"{constants.PRICE_VOLATILITY_CORR_DIR}/{start_date.date()}/{timeframe}/"
+                filepath = os.path.join(constants.PRICE_VOLATILITY_CORR_DIR,f"{start_date.date()}",timeframe)
 
             if not os.path.exists(filepath):
                 os.makedirs(filepath)
