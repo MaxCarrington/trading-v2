@@ -24,7 +24,7 @@ pipeline {
                     // Threshold sweeps
                     axis { name 'MA_THRESH'; values '0.6' }
                     axis { name 'OVERBOUGHT'; values '60' }
-                    axis { name 'OVERSOLD'; values '40', }
+                    axis { name 'OVERSOLD'; values '40' }
                     axis { name 'MOMENTUM_LEN'; values '0.9'}
 
                     // Filters
