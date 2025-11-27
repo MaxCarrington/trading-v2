@@ -17,23 +17,21 @@ pipeline {
             matrix {
                 axes {
                     // Core axes
-                    axis { name 'TIMEFRAME'; values 'M1', 'M5', 'M15', 'M30', 'H1' }
-                    axis { name 'RSI_LOOKBACK'; values '10', '15', '20', '25', '30', '40' }
-                    axis { name 'MA_LOOKBACK'; values '10', '15', '20', '25', '30', '40'}
-                    axis { name 'STOP_LOSS_TYPE'; values 'fixed' }
-                    axis { name 'TAKE_PROFIT_TYPE'; values 'fixed' }
+                    axis { name 'TIMEFRAME'; values 'M1'}
+                    axis { name 'RSI_LOOKBACK'; values '30' }
+                    axis { name 'MA_LOOKBACK'; values '30' }
+
+                    // Threshold sweeps
+                    axis { name 'MA_THRESH'; values '0.6' }
+                    axis { name 'OVERBOUGHT'; values '60' }
+                    axis { name 'OVERSOLD'; values '40', }
+                    axis { name 'MOMENTUM_LEN'; values '0.9'}
 
                     // Filters
                     axis { name 'USE_VOL'; values 'true', 'false' }
-                    axis { name 'VOL_WINDOW'; values '10', '15', '20', '25', '30', '40' }
                     axis { name 'USE_RSI'; values 'true', 'false' }
                     axis { name 'USE_MA'; values 'true', 'false' }
                     axis { name 'USE_MOMENTUM'; values 'true', 'false' }
-
-                    // Risk management
-                    axis { name 'MAX_OPEN_POS'; values '3', '5' }
-                    axis { name 'POS_SIZE_TYPE'; values 'fixed' }
-                    axis { name 'POS_SIZE'; values '1' }
                 }
 
                 agent any
@@ -60,7 +58,7 @@ pipeline {
                         steps {
                             sh '''
                                 TS=$(date -u +"%Y%m%dT%H%M%SZ")
-                                OUTDIR="results/${TIMEFRAME}/${RSI_LOOKBACK}/${STOP_LOSS_TYPE}/${TAKE_PROFIT_TYPE}/${USE_VOL}_${VOL_WINDOW}/${USE_RSI}_${USE_MA}_${USE_MOMENTUM}/${MAX_OPEN_POS}/${POS_SIZE_TYPE}_${POS_SIZE}/${RISK_PCT}/${TS}"
+                                OUTDIR="results/${TIMEFRAME}/${RSI_LOOKBACK}/${STOP_LOSS_TYPE}/${TAKE_PROFIT_TYPE}/${USE_VOL}_${VOL_WINDOW}/${USE_RSI}_${USE_MA}_${USE_MOMENTUM}/${MAX_OPEN_POS}/${POS_SIZE_TYPE}_${POS_SIZE}/${TS}"
                                 mkdir -p "${OUTDIR}"
                                 python scripts/run_backtest.py --config run_configs/config_${TIMEFRAME}_${RSI_LOOKBACK}_${STOP_LOSS_TYPE}_${TAKE_PROFIT_TYPE}_${USE_VOL}_${VOL_WINDOW}_${USE_RSI}_${USE_MA}_${USE_MOMENTUM}_${MAX_OPEN_POS}_${POS_SIZE_TYPE}_${POS_SIZE}.yaml --outdir "${OUTDIR}"
                                 cp run_configs/config_${TIMEFRAME}_${RSI_LOOKBACK}_${STOP_LOSS_TYPE}_${TAKE_PROFIT_TYPE}_${USE_VOL}_${VOL_WINDOW}_${USE_RSI}_${USE_MA}_${USE_MOMENTUM}_${MAX_OPEN_POS}_${POS_SIZE_TYPE}_${POS_SIZE}.yaml "${OUTDIR}/resolved_config.yaml"
