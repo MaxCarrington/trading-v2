@@ -1,5 +1,6 @@
 import re 
 import pandas as pd
+import numpy as np
 from pathlib import Path
 import src as paths
 from datetime import date, timedelta
@@ -17,6 +18,50 @@ def from_csv_to_df(file_name, keep_time_zone=False):
         df.index = df.index.tz_localize(None)
 
     return df
+
+def load_mid_ohlcv(path: str) -> pd.DataFrame:
+    raw = pd.read_csv(path, parse_dates=["Time"])
+
+    # Case 1: New 15-column BAM format with Mid/Bid/Ask
+    if "MidOpen" in raw.columns:
+        df = raw.copy()
+
+        # If Spread column isn't already there, derive it
+        if "Spread" not in df.columns:
+            if "AskClose" in df.columns and "BidClose" in df.columns:
+                df["Spread"] = df["AskClose"].astype(float) - df["BidClose"].astype(float)
+            else:
+                # Fallback if somehow BAM is partial
+                df["Spread"] = np.nan
+
+        df = df.rename(columns={
+            "MidOpen":  "Open",
+            "MidHigh":  "High",
+            "MidLow":   "Low",
+            "MidClose": "Close",
+        })
+
+        # Keep OHLCV + Spread for downstream
+        cols = ["Time", "Open", "High", "Low", "Close", "Volume", "Spread"]
+        df = df[cols]
+
+    else:
+        # Case 2: Old OHLCV-only or OHLCV+Spread format
+        base_cols = ["Time", "Open", "High", "Low", "Close", "Volume"]
+        extra_cols = []
+
+        # If Spread already exists in the CSV, keep it; otherwise we'll just omit it
+        if "Spread" in raw.columns:
+            extra_cols.append("Spread")
+
+        df = raw[base_cols + extra_cols]
+
+        # If no Spread, you can optionally create a dummy column:
+        if "Spread" not in df.columns:
+            df["Spread"] = np.nan  # or a fixed value if you want a default
+
+    return df.set_index("Time")
+
 # Validate if a value matches a given regex pattern
 def is_valid_regex(value, regex):
     return bool(re.fullmatch(regex, value))

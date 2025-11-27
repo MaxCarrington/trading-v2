@@ -307,8 +307,13 @@ def plot_volatiltiy_momentum_correlation_scatter(df, filepath, filename):
     plt.show(block=False)
 
 # How to plot a candlestick chart, change data path for a different chart
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-data_csv = f"{PROJECT_ROOT}/data/raw/oanda/forex/AUD_USD/2025/D/merged/AUD_USD_2025.csv"
+data_csv = os.path.join(
+    constants.PROJECT_ROOT,
+    "data", "raw", "oanda", "forex",
+    "AUD_USD", "2025", "D", "merged",
+    "AUD_USD_2025.csv"
+)
+
 plot_candlestick_chart("AUD_USD", "D", "2025", data_path=data_csv)
 
 

@@ -1,11 +1,11 @@
-import datetime
-import sys
-from pathlib import Path
-
+import sys, os
 import pandas as pd
-import os
-from src.trading.utils.logger import start_log
+from datetime import datetime
+
+import src.trading.utils.constants as constants
 from src.trading.utils.config import load_config, get_config_file_default, get_initial_capital
+from src.trading.strategies.strategy_loader import get_strategy, get_params
+from src.trading.utils.general_utils import load_mid_ohlcv
 
 #--------------------------------------------------------------------------------
 # Capture command-line arguments
@@ -230,7 +230,6 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
         pnl_dfs.append(df)
 
     k = round(100 * pos_days / max(1, (num_periods - 2)))
-    PROJECT_ROOT = Path(__file__).resolve().parents[1]
     # --- Collect and export trade records ---
     all_trades = []
     for symbol, trade_rec_obj in store["trade_records"].items():
@@ -242,7 +241,14 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
         print(trades_df.tail())  # print last few trades neatly
 
         # Optional: export to CSV
-        trades_csv_path = os.path.join(PROJECT_ROOT, "results", "backtest_results", strategy_name, f"trade_records_{datetime.time}.csv")
+        trades_csv_path = os.path.join(
+            constants.PROJECT_ROOT,
+            "results",
+            "backtest_results",
+            strategy_name,
+            f"trade_records_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        )
+
         os.makedirs(os.path.dirname(trades_csv_path), exist_ok=True)
         trades_df.to_csv(trades_csv_path, index=False)
         print(f"Trade records exported to {trades_csv_path}")
@@ -250,7 +256,6 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
         print("No trade records generated.")
 
     return {"pnlList": pnl_dfs, "netWorthList": portfolio_net_worth_list, "k": k}
-
 
 def close_out(prices, pos, slippage_multiplier):
     slippage = calc_slippage(prices['prev_close'], prices['curr_open'], slippage_multiplier)
@@ -260,7 +265,6 @@ def final_exit(prices, pos, slippage_multiplier):
     pnl_slip = close_out(prices, pos, slippage_multiplier)
     net_worth = prices['curr_open'] * pos + pnl_slip
     return pnl_slip, net_worth
-
 
 def check_limit_order(prices, limit_order, limit_price):
     eps = 0.0001  # small tolerance for float comparison
@@ -294,4 +298,53 @@ def check_lengths(num_series, orders):
         if k in orders and len(orders[k]) != num_series:
             raise ValueError(f"len({k})={len(orders[k])} != num_series={num_series}")
 
+def run_backtest(strategy, params):
+    # Load one or more aligned DataFrames with columns: Open, High, Low, Close
+    # Example: using your merged yearly file (adjust the path as needed)
+    for pair in params["pairs"]:
+        year=params["year"]
+        date=params["date"]
+        data_csv = os.path.join(constants.PROJECT_ROOT,"data","raw","oanda","forex",f"{pair}", f"{year}",f"{params['timeframe']}", "merged", f"{pair}_{date}.csv")
+        series = load_mid_ohlcv(data_csv)
 
+        # Ensure backtester receives a list of DataFrames (even if only one)
+        if params["timeframe"] in ["D", "H4", "H1"]:
+            # Use full year
+            data_list = [series]
+        elif params["timeframe"] in ["M30", "M15"]:
+            # Use 1–2 months
+            data_list = [series.loc["2025-01":"2025-02"]]
+        elif params["timeframe"] == "M5":
+            # Use 1 week
+            data_list = [series.loc["2025-01-01":"2025-01-07"]]
+        elif params["timeframe"] == "M1":
+            # Use 1 week (already heavy)
+            data_list = [series.loc["2025-01-01":"2025-01-02"]]
+        else:
+            raise Exception(f'Unknown timeframe: {params["timeframe"]}')
+
+        # Parameters (unused here) and slippage
+        slippage_multiplier = 0.2  # set to 0 for a clean sanity test
+        print(params)
+        results = backtest_live(
+            data_list=data_list,
+            strategy_function=strategy,
+            params=params,
+            slippage_multiplier=slippage_multiplier,
+            strategy_name=params["strategy_name"],
+        )
+
+        # Inspect output
+        pnl_df = results["pnlList"][0]
+        networth_vec = results["netWorthList"]
+        k_ratio = results["k"]
+
+        print(pnl_df.tail())
+        print("Final Net Worth:", networth_vec[-1])
+        print("k (days in position %):", k_ratio)
+
+
+
+params_list = get_params("momentum_v1.2", "AUD_USD", "M5", "2025", "2025")
+strategy_name = get_strategy("momentum_v1.2")
+run_backtest(strategy_name, params_list)

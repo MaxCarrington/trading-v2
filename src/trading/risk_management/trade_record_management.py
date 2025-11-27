@@ -16,12 +16,15 @@ class TradeRecords:
             "exit_date": pd.Series(dtype="datetime64[ns]"),
             "entry_price": pd.Series(dtype="float64"),
             "exit_price": pd.Series(dtype="float64"),
+            "entry_spread": pd.Series(dtype="float64"),   # NEW: spread at entry
+            "exit_spread": pd.Series(dtype="float64"),    # NEW: spread at exit
+            "spread_cost": pd.Series(dtype="float64"),    # NEW: cost due to spread
             "pos_size": pd.Series(dtype="float64"),
             "trade_type": pd.Series(dtype="string"),
             "is_limit": pd.Series(dtype="bool"),
             "take_profit": pd.Series(dtype="float64"),
             "stop_loss": pd.Series(dtype="float64"),
-            "holding_duration": pd.Series(dtype="int32"),  # or timedelta64 if time-based
+            "holding_duration": pd.Series(dtype="int32"),
             "max_holding_duration": pd.Series(dtype="float64"),
             "open": pd.Series(dtype="bool"),
             "closed": pd.Series(dtype="bool"),
@@ -30,29 +33,38 @@ class TradeRecords:
             "pending_close_reason": pd.Series(dtype="string"),
             "profit": pd.Series(dtype="float64"),
             "normalised_score": pd.Series(dtype="float64"),
-            "volatility_indicator": pd.Series(dtype="float64"),
+            "combined_volatility_score": pd.Series(dtype="float64"),
+            "period_volatility_score": pd.Series(dtype="float64"),
+            "stddev_volatility_score": pd.Series(dtype="float64"),
             "rsi": pd.Series(dtype="float64"),
+            "overbought_thresh": pd.Series(dtype="float64"),
+            "oversold_thresh": pd.Series(dtype="float64"),
             "moving_average_type": pd.Series(dtype="string"),
-            "moving_average_value": pd.Series(dtype="float64")
+            "moving_average_value": pd.Series(dtype="float64"),
+            "moving_average_thresh": pd.Series(dtype="float64"),
         })
         self.kelly_sizers = {}
         self.trade_index = 0
 
     def add_new_trade_record(self, asset, time_frame, date, pos_size,
                              trade_type, take_profit, stop_loss, max_holding_duration,
-                             normalised_score, volatility_indicator, rsi, moving_average_type,
-                             moving_average_value, entry_date=None, entry_price=None, limitPrice=None):
+                             normalised_score, combined_volatility_score, period_volatility_score, stddev_volatility,
+                             rsi, overbought_thresh, oversold_thresh, moving_average_type, moving_average_value, moving_average_thresh,
+                             entry_date=None, entry_price=None, limitPrice=None, entry_spread=None):
         # Create a new trade record with all required information about a trade
         self.trade_index += 1
         new_trade = {
             "trade_id": self.trade_index,
             "asset": asset,
             "time_frame": time_frame,
-            "datetime": pd.to_datetime(date),  # signal timestamp
+            "datetime": pd.to_datetime(date),
             "entry_date": pd.to_datetime(entry_date) if entry_date is not None else pd.to_datetime(date),
             "exit_date": None,
             "entry_price": entry_price if entry_price is not None else (limitPrice if limitPrice is not None else None),
             "exit_price": None,
+            "entry_spread": entry_spread,
+            "exit_spread": None,
+            "spread_cost": 0.0,
             "pos_size": pos_size,
             "trade_type": trade_type,
             "is_limit": limitPrice is not None,
@@ -65,12 +77,17 @@ class TradeRecords:
             "cancelled": False,
             "pending_close": False,
             "pending_close_reason": None,
-            "profit": 0,
+            "profit": 0.0,
             "normalised_score": normalised_score,
-            "volatility_indicator": volatility_indicator,
+            "combined_volatility_score": combined_volatility_score,
+            "period_volatility_score": period_volatility_score,
+            "stddev_volatility_score": stddev_volatility,
             "rsi": rsi,
+            "overbought_thresh": overbought_thresh,
+            "oversold_thresh": oversold_thresh,
             "moving_average_type": moving_average_type,
-            "moving_average_value": moving_average_value
+            "moving_average_value": moving_average_value,
+            "moving_average_thresh": moving_average_thresh,
         }
 
         # Add the new trade record to the data frame of trade records
@@ -115,22 +132,45 @@ class TradeRecords:
 
     # Execute closure of trades flagged as pending_close.
     # Called at the start of each iteration, before adjust_positions.
-    def close_trade_records(self, todays_open, todays_date, prompts_on=False):
+    def close_trade_records(self, todays_open, todays_spread, todays_date, prompts_on=False):
         for idx, trade in self.trade_records[self.trade_records["pending_close"]].iterrows():
             self.trade_records.at[idx, "exit_price"] = todays_open
             self.trade_records.at[idx, "exit_date"] = todays_date
+            self.trade_records.at[idx, "exit_spread"] = todays_spread
             self.trade_records.at[idx, "open"] = False
             self.trade_records.at[idx, "closed"] = True
             self.trade_records.at[idx, "pending_close"] = False
 
-            # Calculate profit
+            # Direction
             trade_type = 1 if trade["trade_type"] == "buy" else -1
             entry_price = trade["entry_price"]
             pos_size = trade["pos_size"]
 
-            profit = (todays_open - entry_price) * pos_size if trade_type == 1 \
-                else (entry_price - todays_open) * pos_size
+            # 1) Gross PnL on mid prices
+            if trade_type == 1:
+                gross = (todays_open - entry_price) * pos_size
+            else:
+                gross = (entry_price - todays_open) * pos_size
+
+            # 2) Spread cost: approx pay 1/2 spread at entry + 1/2 at exit
+            entry_spread = trade["entry_spread"]
+            if pd.isna(entry_spread):
+                entry_spread = todays_spread  # fallback if missing
+
+            avg_spread = 0.5 * (entry_spread + todays_spread)
+            spread_cost = avg_spread * abs(pos_size)
+            print("SPREAD COST: ", spread_cost)
+            # 3) Net profit
+            profit = gross - spread_cost
+
+            self.trade_records.at[idx, "spread_cost"] = spread_cost
             self.trade_records.at[idx, "profit"] = profit
+
+            if prompts_on:
+                print(
+                    f"Closed {trade['trade_type']} trade {trade['trade_id']} at {todays_open}, "
+                    f"gross={gross:.5f}, spread_cost={spread_cost:.5f}, net={profit:.5f}"
+                )
 
     # Adds exit prices to closed trades and calculates profit or loss
     def add_exit_price(self, store, series_index, new_row_list):

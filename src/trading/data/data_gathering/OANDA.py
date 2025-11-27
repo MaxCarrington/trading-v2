@@ -9,6 +9,9 @@ from src.trading.utils.paths import get_forex_dir, get_time_frames, get_pairs
 # Initialize API client
 client = API(access_token='REDACTED', environment='practice')
 
+def _fmt_utc(dt):
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
 def get_daily_data_for_date(date, time_frames, pairs):
     date_start = datetime.strptime(date, '%Y-%m-%d')
     start_time = date_start.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -18,10 +21,10 @@ def get_daily_data_for_date(date, time_frames, pairs):
         for pair in pairs:
 
             api_params = {
-                "from": start_time.isoformat() + "Z",
-                "to": end_time.isoformat() + "Z",
+                "from": _fmt_utc(start_time),
+                "to": _fmt_utc(end_time),
                 "granularity": params["granularity"],
-                "price": params["price"]
+                "price": params["price"],  # now "BAM"
             }
 
             r = instruments.InstrumentsCandles(instrument=pair, params=api_params)
@@ -29,13 +32,42 @@ def get_daily_data_for_date(date, time_frames, pairs):
 
             rows = []
             for candle in data.get('candles', []):
-                if candle['complete'] and 'mid' in candle:
-                    mid = candle['mid']
-                    rows.append([candle['time'], mid['o'], mid['h'], mid['l'], mid['c'], candle['volume']])
+                bid = candle.get("bid")
+                ask = candle.get("ask")
+                mid = candle.get("mid")
 
-            df = pd.DataFrame(rows, columns=['Time', 'Open', 'High', 'Low', 'Close', 'Volume'])
-            df['Time'] = pd.to_datetime(df['Time'])
+                if candle.get("complete") and bid and ask and mid:
+                    rows.append([
+                        candle["time"],
 
+                        # Bid OHLC
+                        bid["o"], bid["h"], bid["l"], bid["c"],
+
+                        # Ask OHLC
+                        ask["o"], ask["h"], ask["l"], ask["c"],
+
+                        # Mid OHLC
+                        mid["o"], mid["h"], mid["l"], mid["c"],
+
+                        # Spread (close)
+                        float(ask["c"]) - float(bid["c"]),
+
+                        candle["volume"],
+                    ])
+
+            df = pd.DataFrame(rows, columns=[
+                "Time",
+                "BidOpen", "BidHigh", "BidLow", "BidClose",
+                "AskOpen", "AskHigh", "AskLow", "AskClose",
+                "MidOpen", "MidHigh", "MidLow", "MidClose",
+                "SpreadClose",
+                "Volume",
+            ])
+
+            df["Time"] = (
+                pd.to_datetime(df["Time"], utc=True)
+                .dt.tz_convert(None)  # make it naive but UTC-based
+            )
             # ----- NEW FOLDER STRUCTURE -----
             # pair/year/timeframe
             pair_folder = os.path.dirname(os.path.dirname(get_forex_dir("oanda", pair, time_frame_key, start_time)))

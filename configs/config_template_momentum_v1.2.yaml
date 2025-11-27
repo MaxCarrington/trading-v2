@@ -1,0 +1,16 @@
+strategy: ${STRATEGY}
+symbols: ${SYMBOLS}
+timeframe: ${TIMEFRAME}
+date: ${DATE}
+
+parameters:
+  rsi_lookback: ${RSI_LOOKBACK}
+  ma_lookback: ${MA_LOOKBACK}
+  ma_thresh: ${MA_THRESH}
+  overbought_thresh: ${OVERBOUGHT}
+  oversold_thresh: ${OVERSOLD}
+  momentum_len_thresh: ${MOMENTUM_LEN}
+  use_volatility_filter: ${USE_VOL}
+  use_rsi_filter: ${USE_RSI}
+  use_ma_filter: ${USE_MA}
+

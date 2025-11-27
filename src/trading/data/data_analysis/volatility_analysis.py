@@ -26,7 +26,7 @@ def get_volatility_statistics(series, lookback, asset, time_frame, date):
         "period_vol": vol_classifications,
         "series_vol": series_vol,
         "std_atrs": standardised_atrs,
-        "std_std_dev": standardised_std_dev,
+        "stddev": standardised_std_dev,
         'asset': asset,
         'time_frame': time_frame,
         'date': date

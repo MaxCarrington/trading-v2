@@ -1,5 +1,7 @@
 # This file defines key directory paths and constants used throughout the trading application.
-import os 
+import os
+from pathlib import Path
+
 # Define root and key directories
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, os.pardir))
 SRC_DIR = os.path.join(ROOT_DIR, "src")
@@ -23,41 +25,13 @@ DIVIDENDS_API_KEY = "REDACTED"
 # Dictionary of time frames with their corresponding granularity and price type
 
 TIME_FRAMES = {
-    "D": {
-        "granularity": 'D',  # Hourly interval
-        "price": 'M',          # Midpoint prices
-        "periods": 1
-    },
-    "H4": {
-        "granularity": 'H4',  # Hourly interval
-        "price": 'M',          # Midpoint prices
-        "periods": 4
-    },
-    "H1": {
-        "granularity": 'H1',  # Hourly interval
-        "price": 'M',          # Midpoint prices
-        "periods": 24
-    },
-    "M30": {
-        "granularity": 'M30',  # 30-minute interval
-        "price": 'M',          # Midpoint prices
-        "periods": 48
-    },
-    "M15": {
-        "granularity": 'M15',  # 15-minute interval
-        "price": 'M',          # Midpoint prices
-        "periods": 96
-    },
-    "M5": {
-        "granularity": 'M5',   # 5-minute interval
-        "price": 'M',          # Midpoint prices
-        "periods": 288
-    },
-    "M1": {
-        "granularity": 'M1',   # 1-minute interval
-        "price": 'M',          # Midpoint prices
-        "periods": 1440
-    }
+    "D":   {"granularity": "D",   "price": "BAM", "periods": 1},
+    "H4":  {"granularity": "H4",  "price": "BAM", "periods": 4},
+    "H1":  {"granularity": "H1",  "price": "BAM", "periods": 24},
+    "M30": {"granularity": "M30", "price": "BAM", "periods": 48},
+    "M15": {"granularity": "M15", "price": "BAM", "periods": 96},
+    "M5":  {"granularity": "M5",  "price": "BAM", "periods": 288},
+    "M1":  {"granularity": "M1",  "price": "BAM", "periods": 1440},
 }
 
 # List of currency pairs to fetch data for
@@ -128,3 +102,5 @@ DATE_REGEX = r"^\d{4}-\d{2}-\d{2}$"
 
 # Regular expression for validating a single year in YYYY format
 YEAR_REGEX = r"^\d{4}$"
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]

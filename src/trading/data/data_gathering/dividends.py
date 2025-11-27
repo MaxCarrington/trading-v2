@@ -3,12 +3,12 @@ import os
 import requests
 import json
 
-# Dynamically add the project root to PYTHONPATH
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(project_root)
+from src.trading.utils.paths import get_dividends_api_key, get_data_dir
+from src.trading.utils.paths import get_dividend_file
+import src.trading.utils.constants as constants
 
-from trading.utils.paths import get_dividends_api_key, get_data_dir
-from trading.utils.paths import get_dividend_file
+# Dynamically add the project root to PYTHONPATH
+sys.path.append(constants.PROJECT_ROOT)
 
 stock_data_path = os.path.join(get_data_dir(), "StockData") 
 
@@ -44,7 +44,7 @@ def download_dividend_info(symbol):
     data = r.json()
 
     # Construct the full directory path
-    folder_path = os.path.join(stock_data_path, "Dividends", symbol)
+    folder_path = os.path.join(f"{constants.DIVIDENDS_DIR}", symbol)
     os.makedirs(folder_path, exist_ok=True)
 
     # Define the output file path

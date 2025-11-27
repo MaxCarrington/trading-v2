@@ -21,6 +21,8 @@ from src.trading.data.data_analysis.volatility_analysis import get_volatility_st
 from src.trading.risk_management.trade_record_management import TradeRecords
 from src.trading.risk_management.stop_losses import fixed_stop_loss
 from src.trading.risk_management.take_profit import fixed_take_profit
+from src.trading.indicators.moving_averages import calculate_moving_average
+from src.trading.indicators.relative_strength_index import calculate_rsi, is_rsi_overbought, is_rsi_oversold
 
 def momentum_strategy_v1_2(
     store,
@@ -34,13 +36,10 @@ def momentum_strategy_v1_2(
     pos_size=1,
     no_orders=1,
     sell_all=False,
-    momentum_score_thresh = 75,
     minimum_data_points=100
 ):
     # Extract global values
-    series = params["pairs"]  # list of symbols like ["EUR_USD", "GBP_USD"]
-    timeframe = params["timeframe"]
-    date = params["date"]
+    series = params["pairs"]
 
     # Initialise store if needed
     if store is None:
@@ -48,7 +47,6 @@ def momentum_strategy_v1_2(
 
     # Update store with the *previous* bar per series
     store = update_store(store, new_row_list, series)
-    pos_size = 1 # -> CHANGE THIS
     max_holding_duration = 20# CHANGE THIS TOO
     num_series = len(series)
     market      = [0] * num_series
@@ -61,9 +59,21 @@ def momentum_strategy_v1_2(
 
     if store["iter"] >= minimum_data_points:
         for i, (symbol, row) in enumerate(zip(series, new_row_list)):
+
+            timeframe = params["timeframe"]
+            date = params["date"]
+            rsi_lookback = params["rsi_lookback"][symbol]
+            ma_lookback = params["ma_lookback"][symbol]
+            ma_thresh = params["ma_thresh"][symbol]
+            ma_type = params["ma_type"]
+            overbought_thresh = params["overbought_thresh"][symbol]
+            oversold_thresh = params["oversold_thresh"][symbol]
+            momentum_score_thresh = params["momentum_score_thresh"][symbol]
+
             # Close existing trades
             store["trade_records"][symbol].close_trade_records(
                 todays_open=row["Open"],
+                todays_spread=row["Spread"],
                 todays_date=row["Time"].replace(tzinfo=None),
                 prompts_on=prompts
             )
@@ -75,24 +85,39 @@ def momentum_strategy_v1_2(
             )
             market[i] += pos_adjustment
 
+            # 3. Calculate indicators for this symbol
+            close_series = store["ohlcv"][symbol]["Close"]
+            ma_value = calculate_moving_average(ma_type, close_series, ma_lookback).iloc[-1]
+
+            rsi_value = calculate_rsi(close_series, rsi_lookback).iloc[-1]
+
+            store["pending_rsi_value"][symbol] = rsi_value
+            store["pending_moving_average_value"][symbol] = ma_value
+
             # --- Phase 1: Execute pending trade at today's open ---
             if store["pending_trades"][symbol] != 0 and store["pending_entry_date"][symbol] is not None:
-                entry_price = row["Open"]  # today's open
+                print("SPREAD COST:", row["Spread"])
                 store["trade_records"][symbol].add_new_trade_record(
                     asset=symbol,
                     time_frame=timeframe,
                     date=row["Time"].replace(tzinfo=None),  # when the signal was generated
                     entry_price=row["Open"],  # execution price
+                    entry_spread=row["Spread"],
                     pos_size=pos_size,
                     trade_type="Buy" if store["pending_trades"][symbol] == 1 else "Sell",
                     take_profit=fixed_take_profit(store["pending_trades"][symbol], row["Open"]),
                     stop_loss=fixed_stop_loss(store["pending_trades"][symbol], row["Open"]),
                     max_holding_duration=max_holding_duration,
                     normalised_score=store["pending_normalised_score"][symbol],
-                    volatility_indicator=0,
-                    rsi=0,
-                    moving_average_type=0,
-                    moving_average_value=0
+                    combined_volatility_score=store["pending_combined_volatility_score"][symbol],
+                    period_volatility_score=store["pending_period_volatility_score"][symbol],
+                    stddev_volatility=store["pending_stddev_volatility_score"][symbol],
+                    rsi= store["pending_rsi_value"][symbol],
+                    overbought_thresh=overbought_thresh,
+                    oversold_thresh=oversold_thresh,
+                    moving_average_type= ma_type,
+                    moving_average_value=store["pending_moving_average_value"][symbol],
+                    moving_average_thresh=ma_thresh,
                 )
 
                 # Reset pending trade after execution
@@ -101,12 +126,12 @@ def momentum_strategy_v1_2(
                 store["pending_normalised_score"][symbol] = 0
 
             # --- Phase 2: Detect new signals and mark pending trade for tomorrow ---
-            store, should_trade, normalised_score = analyse_momentum(
+            store, should_trade, normalised_score, volatility_stats = analyse_momentum(
                 store, symbol, params, timeframe, date,
+                momentum_threshold=momentum_score_thresh,
                 trade_high_volatility=False,
                 trade_w_volatility=True
             )
-
             if should_trade:
                 store["current_momentum_periods"][symbol].append(len(store["ohlcv"][symbol]) - 1)
                 if len(store["current_momentum_periods"][symbol]) > 2:
@@ -116,24 +141,38 @@ def momentum_strategy_v1_2(
                     df_slice = store["ohlcv"][symbol].iloc[start:end + 1]
                     direction, net_ret = get_momentum_direction(df_slice)
 
-                    if direction == 1 and normalised_score > momentum_score_thresh:
+                    entry_volatility_score = volatility_stats["combined_score"].iloc[-1]  # latest combined score
+                    entry_volatility_period = volatility_stats["period_vol"][-1]  # latest categorical label
+                    entry_volatility_stddev = volatility_stats["stddev"].iloc[-1]  # latest stddev value
+                    if direction == 1 and normalised_score > momentum_score_thresh: # and is_rsi_oversold(rsi_value, oversold_thresh) and row["Open"] < ma_value:
                         print(f"BUY SIGNAL. Normalised score: {normalised_score}")
                         market[i] += pos_size
                         store["pending_trades"][symbol] = 1
                         store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
                         store["pending_normalised_score"][symbol] = normalised_score
+                        # Add temporary volatility information to the store to update a trade record with
+                        store["pending_combined_volatility_score"][symbol] = entry_volatility_score
+                        store["pending_period_volatility_score"][symbol] = entry_volatility_period
+                        store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
 
-                    elif direction == -1 and normalised_score > momentum_score_thresh:
+                    elif direction == -1 and normalised_score > momentum_score_thresh: # and is_rsi_overbought(rsi_value, overbought_thresh) and row["Open"] > ma_value:
                         print(f"SELL SIGNAL. Normalised score: {normalised_score}")
                         market[i] -= pos_size
                         store["pending_trades"][symbol] = -1
                         store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
                         store["pending_normalised_score"][symbol] = normalised_score
+                        # Add temporary volatility information to the store to update a trade record with
+                        store["pending_combined_volatility_score"][symbol] = entry_volatility_score
+                        store["pending_period_volatility_score"][symbol] = entry_volatility_period
+                        store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
 
                     else:
                         store["pending_trades"][symbol] = 0
                         store["pending_entry_date"][symbol] = None
                         store["pending_normalised_score"][symbol] = 0
+                        store["pending_combined_volatility_score"][symbol] = 0
+                        store["pending_period_volatility_score"][symbol] = ""
+                        store["pending_stddev_volatility_score"][symbol] = 0
 
             else:
                 if store["current_momentum_periods"][symbol]:
@@ -152,16 +191,16 @@ def momentum_strategy_v1_2(
         "store": store,
     }
 
-def analyse_momentum(store, symbol, params, timeframe, date, trade_high_volatility, trade_w_volatility, high_volatility_thresh = 70, low_volatility_thresh = 30):
+def analyse_momentum(store, symbol, params, timeframe, date, trade_high_volatility, trade_w_volatility, momentum_threshold=70, high_volatility_thresh = 70, low_volatility_thresh = 30):
     df = store["ohlcv"][symbol]
     momentum_stats = get_momentum_statistics(df, params['momentum_len_thresh'][symbol], symbol, timeframe, date)
     store["momentum_score"][symbol] = momentum_stats["normalised_score"]
 
     volatility_stats = get_volatility_statistics(df, params["lookback"][symbol], symbol, timeframe, date)
 
-    momentum_found, normalised_score = is_momentum(momentum_stats, volatility_stats, trade_high_volatility=trade_high_volatility, trade_w_volatility=trade_w_volatility)
+    momentum_found, normalised_score = is_momentum(momentum_stats, volatility_stats, momentum_threshold, trade_high_volatility=trade_high_volatility, trade_w_volatility=trade_w_volatility)
 
-    return store, momentum_found, normalised_score
+    return store, momentum_found, normalised_score, volatility_stats
 
 def initialise_store(series, default_lookback=20):
     cols = ["Open", "High", "Low", "Close", "Volume"]
@@ -184,6 +223,11 @@ def initialise_store(series, default_lookback=20):
         "pending_normalised_score": {s: [] for s in series},
         "pending_trades": {s: [] for s in series},
         "pending_entry_date": {s: None for s in series},
+        "pending_combined_volatility_score": {s: 0.0 for s in series},
+        "pending_period_volatility_score": {s: "" for s in series},
+        "pending_stddev_volatility_score": {s: 0.0 for s in series},
+        "pending_rsi_value": {s: 0.0 for s in series},
+        "pending_moving_average_value": {s: 0.0 for s in series},
     }
 
 def update_store(store, new_row_list, series):
