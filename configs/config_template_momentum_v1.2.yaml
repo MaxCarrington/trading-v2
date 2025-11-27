@@ -1,16 +1,25 @@
-strategy: ${STRATEGY}
 symbols: ${SYMBOLS}
 timeframe: ${TIMEFRAME}
-date: ${DATE}
+date_range: ${DATE_RANGE}
 
 parameters:
+  # Core indicators
   rsi_lookback: ${RSI_LOOKBACK}
   ma_lookback: ${MA_LOOKBACK}
   ma_thresh: ${MA_THRESH}
   overbought_thresh: ${OVERBOUGHT}
   oversold_thresh: ${OVERSOLD}
   momentum_len_thresh: ${MOMENTUM_LEN}
+
+  # Filters
   use_volatility_filter: ${USE_VOL}
+  volatility_window: ${VOL_WINDOW}
   use_rsi_filter: ${USE_RSI}
   use_ma_filter: ${USE_MA}
+  use_momentum_filter: ${USE_MOMENTUM}
 
+  # Risk & trade management
+  stop_loss_type: ${STOP_LOSS_TYPE}        # e.g. pct, ATR, fixed
+  take_profit_type: ${TAKE_PROFIT_TYPE}    # e.g. pct, ATR, fixed
+  position_size_type: ${POS_SIZE_TYPE}     # e.g. fixed, volatility, Kelly
+  position_size: ${POS_SIZE}

@@ -1,13 +1,13 @@
 import yaml, os
 from pathlib import Path
 from src.trading.utils.logger import log
+import src.trading.utils.constants as constants
+CONFIG_FILE_DEFAULT = os.path.join(constants.PROJECT_ROOT, "configs", "backtest_config.yaml")
 
-CONFIG_FILE_DEFAULT = os.path.join(Path(__file__).resolve().parents[3], "configs", "backtest_config.yaml")
-
-CONFIG_FILE_DEFAULT_2 = os.path.join(Path(__file__).resolve().parents[3], "configs", "backtest_config2.yaml")
+CONFIG_FILE_DEFAULT_2 = os.path.join(constants.PROJECT_ROOT, "configs", "backtest_config2.yaml")
 # Load YAML configs
 def load_strategy_configs():
-    root = os.path.join(Path(__file__).resolve().parents[3], "configs")
+    root = os.path.join(constants.PROJECT_ROOT, "configs")
 
     thresholds = load_config(os.path.join(root, "strategy_thresholds.yaml"))
     analysis_params = load_config(os.path.join(root, "analysis_parameters.yaml"))
