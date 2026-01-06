@@ -1,6 +1,7 @@
 from src.trading.strategies.momentum_v1_2 import momentum_strategy_v1_2
 
 def get_strategy(strategy_name: str):
+    print(strategy_name)
     if strategy_name == 'momentum_v1.2':
         return momentum_strategy_v1_2
     else:
@@ -33,13 +34,13 @@ def get_params(config: dict):
             "year": year,
             # pull parameters directly from config if present, else defaults
             "rsi_lookback": config.get("parameters", {}).get("rsi_lookback", {pair: 12 for pair in pairs}),
-            "ma_lookback": config.get("parameters", {}).get("ma_lookback", {pair: 27 for pair in pairs}),
+            "ma_lookback": config.get("parameters", {}).get("ma_lookback", {pair: 9 for pair in pairs}),
             "ma_thresh": config.get("parameters", {}).get("ma_thresh", {pair: 0.66 for pair in pairs}),
             "overbought_thresh": config.get("parameters", {}).get("overbought_thresh", {pair: 76 for pair in pairs}),
             "oversold_thresh": config.get("parameters", {}).get("oversold_thresh", {pair: 27 for pair in pairs}),
             "momentum_len_thresh": config.get("parameters", {}).get("momentum_len_thresh", {pair: 0.77 for pair in pairs}),
             "momentum_score_thresh": config.get("parameters", {}).get("momentum_score_thresh", {pair: 65 for pair in pairs}),
-            "ma_type": config.get("parameters", {}).get("ma_type", "WMA"),
+            "ma_type": config.get("parameters", {}).get("ma_type", "EMA"),
             "momentum_wSize": config.get("parameters", {}).get("momentum_wSize", {pair: 15 for pair in pairs}),
             "p_val_len_thresh": config.get("parameters", {}).get("p_val_len_thresh", {pair: 0.97 for pair in pairs}),
             # risk management

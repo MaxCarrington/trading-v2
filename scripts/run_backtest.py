@@ -346,6 +346,6 @@ def run_backtest(strategy, params):
 
 
 params_list = get_params(config)
-strategy_name = get_strategy(config["strategy"])
+strategy_name = get_strategy("momentum_v1.2")
 
-run_backtest(strategy_name, params_list)
+run_backtest("momentum_v1.2", params_list)
