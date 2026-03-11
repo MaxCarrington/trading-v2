@@ -1,0 +1,16 @@
+volatility_lookback: 12
+momentum_lookback: 12
+holding_period: 34
+rsi_lookback: 12
+ma_lookback: 27
+ma_thresh: 66
+overbought_thresh: 76
+oversold_thresh: 27
+
+price_to_use: "Mid"
+ma_type: "WMA"
+
+momentum_wSize: 100
+p-val_len_thresh: 0.97
+momentum_len_thresh: 0.77
+momentum_score_thresh: 0.65

@@ -2,7 +2,6 @@ import re
 import pandas as pd
 import numpy as np
 from pathlib import Path
-import src as paths
 from datetime import date, timedelta
 from src.trading.utils.logger import error, info, warning
 from src.trading.utils.paths import get_forex_dir

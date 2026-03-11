@@ -1,30 +1,24 @@
-import sys
-
 import numpy as np
 from scipy.stats import pearsonr
 
 from src.trading.data.stat_tests.augmented_dickey_fuller import perform_adf_test
 from src.trading.utils.data_manipulation import to_log_returns
 from src.trading.data.stat_tests.hurst_exponent import calculate_hurst_exponent
+from src.trading.utils.logger import start_log, info, warning, error
 
 # Get the momentum statistical information from analysis
-def get_momentum_statistics(series, length_threshold, asset, time_frame, date):
-    log_returns = to_log_returns(series['Close'].dropna().tail(75))
-
+def get_momentum_statistics(series, p_val_len_thresh, asset, time_frame, start_date, end_date, price_to_use, print_output=False):
+    log_returns = to_log_returns(series[f"{price_to_use}Close"].dropna().tail(75))
     # find the optimal lookback window with strongest correlation signal
     rolling_correlations = calc_optimal_window_size(log_returns)
-
     # Use only optimal correlations for regime classification
     optimal_corrs = rolling_correlations.get('correlations', [])
-
     # classify regime (Momentum/Mean-Reversion/None) based on correlation outcomes
-    momentum_indication = check_len_for_momentum(length_threshold, {'correlations': optimal_corrs})
-
+    momentum_indication = check_len_for_momentum(p_val_len_thresh, {'correlations': optimal_corrs})
     #print(f"momentum indication:{momentum_indication}")
 
     normalised_score, suitability = generate_momentum_score(momentum_indication, rolling_correlations)
-
-    return {
+    momentum_stats = {
         'normalised_score': normalised_score,
         'momentum_suitability': suitability,
         'momentum_indication': momentum_indication,
@@ -33,8 +27,12 @@ def get_momentum_statistics(series, length_threshold, asset, time_frame, date):
         'correlations': rolling_correlations,
         'asset': asset,
         'time_frame': time_frame,
-        'date': date
+        'start_date': start_date,
+        'end_date': end_date,
     }
+    if print_output:
+        print_momentum_analysis(momentum_stats)
+    return momentum_stats
 
 # Generates a momentum score
 def generate_momentum_score(momentum_indication, rolling_correlations):
@@ -163,24 +161,25 @@ def statistical_score(series):
     return score
 
 # Neatly prints the output from get_momentum_statistics
-def print_momentum_statistics(stats_dict):
-    print("\n📊 Momentum Diagnostic Summary")
-    print(f"Asset: {stats_dict.get('asset')}")
-    print(f"Date: {stats_dict.get('date')}")
-    print(f"Timeframe: {stats_dict.get('time_frame')}")
-    print("-" * 50)
+def print_momentum_analysis(stats_dict):
+    info("\n\n\n📊 Momentum Diagnostic Summary")
+    info(f"Asset: {stats_dict.get('asset')}")
+    info(f"Start Date: {stats_dict.get('start_date')}")
+    info(f"End Date: {stats_dict.get('end_date')}")
+    info(f"Timeframe: {stats_dict.get('time_frame')}")
+    info("-" * 50)
 
     # --- Regime Classification ---
     indication = stats_dict.get('momentum_indication', 'N/A')
     suitability = stats_dict.get('momentum_suitability', 'N/A')
-    print("\n🔁 Regime Classification:")
-    print(f"  • Momentum Indication   : {indication}")
-    print(f"  • Suitability Rating    : {suitability}")
+    info("🔁 Regime Classification:")
+    info(f"  • Momentum Indication   : {indication}")
+    info(f"  • Suitability Rating    : {suitability}")
 
     # --- Statistical Score ---
     stat_score = stats_dict.get('normalised_stat_score', 0)
-    print("\n📐 Statistical Score:")
-    print(f"  • Normalised Score      : {stat_score:.2f} / 1.00")
+    info("📐 Statistical Score:")
+    info(f"  • Normalised Score      : {stat_score:.2f} / 1.00")
 
     # --- Correlation Diagnostics ---
     lookback = stats_dict.get('lookback', 'N/A')
@@ -188,33 +187,33 @@ def print_momentum_statistics(stats_dict):
     corr_list = stats_dict.get('correlations', {}).get('correlations', [])
     reliability = min(1.0, len(corr_list) / stats_dict.get('correlations', {}).get('max_possible_windows', 1))
     strength = abs(best_corr)
-    print("\n📈 Correlation Diagnostics:")
-    print(f"  • Optimal Lookback      : {lookback}")
-    print(f"  • Best Correlation      : {best_corr:.4f}")
-    print(f"  • Strength              : {strength:.2f}")
-    print(f"  • Reliability           : {reliability:.2f}")
-    print(f"  • Significant Windows   : {len(corr_list)}")
+    info("📈 Correlation Diagnostics:")
+    info(f"  • Optimal Lookback      : {lookback}")
+    info(f"  • Best Correlation      : {best_corr:.4f}")
+    info(f"  • Strength              : {strength:.2f}")
+    info(f"  • Reliability           : {reliability:.2f}")
+    info(f"  • Significant Windows   : {len(corr_list)}")
 
     # --- Combined Score ---
     combined_score = stats_dict.get('combined_score', 0)
-    print("\n🧮 Combined Momentum Score:")
-    print(f"  • Score = stat × regime weight × confidence")
-    print(f"  • Final Combined Score  : {combined_score:.2f}")
+    info("🧮 Combined Momentum Score:")
+    info(f"  • Score = stat × regime weight × confidence")
+    info(f"  • Final Combined Score  : {combined_score:.2f}")
 
     # --- Confidence Breakdown ---
-    print("\n🔍 Confidence Breakdown:")
-    print(f"  • Strength Component    : {strength:.2f}")
-    print(f"  • Reliability Component : {reliability:.2f}")
-    print(f"  • Weighted Confidence   : {0.4 * strength + 0.6 * reliability:.2f}")
+    info("🔍 Confidence Breakdown:")
+    info(f"  • Strength Component    : {strength:.2f}")
+    info(f"  • Reliability Component : {reliability:.2f}")
+    info(f"  • Weighted Confidence   : {0.4 * strength + 0.6 * reliability:.2f}")
 
     # --- Sample Dates ---
     past_dates = stats_dict.get('correlations', {}).get('start_date_past', [])
     future_dates = stats_dict.get('correlations', {}).get('start_date_future', [])
     if past_dates and future_dates:
-        print("\n🕒 Sample Window Dates:")
+        info("🕒 Sample Window Dates:")
         for i in range(min(3, len(past_dates))):
-            print(f"  • Past: {past_dates[i]} → Future: {future_dates[i]}")
-    print("-" * 50)
+            info(f"  • Past: {past_dates[i]} → Future: {future_dates[i]}")
+    info("-" * 50)
 
     # --- Verdict ---
     if suitability == "Very high":
@@ -226,8 +225,8 @@ def print_momentum_statistics(stats_dict):
     else:
         verdict = "❌ Not Suitable for Momentum Strategy"
 
-    print(f"\n🧠 Verdict: {verdict}")
-    print("-" * 50)
+    info(f"🧠 Verdict: {verdict}")
+    info("-" * 50)
 
 # Returns the direction of momentum based on previous momentum periods
 def get_momentum_direction(df):

@@ -1,8 +1,5 @@
 # Taken from https://www.sciencedirect.com/science/article/pii/S0304405X24001399#fd15
-import math
-import numpy as np
 
-from trading.utils.logger import log
 
 # estimate_bid_ask_spread(...) computes the key moments from Section 3
 # needed to estimate the bid–ask spread from OHLC data.
@@ -27,7 +24,6 @@ from trading.utils.logger import log
 
 # - p_tau_equals_1: fraction of bars with τ_t=1 in the window
 # n_used: number of bars used in the covariance
-import numpy as np
 
 def estimate_bid_ask_spread(ohlcv, time, *, window=252, debug=False):
     # ---- slice rolling window up to and including `time` ----

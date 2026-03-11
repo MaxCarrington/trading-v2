@@ -1,4 +1,3 @@
-from statsmodels.tsa.stattools import adfuller
 from src.trading.utils.data_manipulation import to_log_returns
 # Performs an Augmented Dickey fuller test
 # Determines if a time series is stationary by testing for a unit root (a null

@@ -3,25 +3,23 @@ import pandas as pd
 from collections import Counter
 from src.trading.indicators.average_true_range import calculate_rolling_atr
 from src.trading.utils.data_manipulation import zscore_standardisation
+from src.trading.utils.logger import start_log, info, warning, error
 
 # Function uses Average True Range, Standard Deviation
 # to determine the volatility over a given period
-def get_volatility_statistics(series, lookback, asset, time_frame, date):
-    std_dev = stddev_rolling_window(series, lookback)
-
+def get_volatility_statistics(series, lookback, asset, time_frame, start_date, end_date, price_to_use, print_output=False):
+    std_dev = stddev_rolling_window(series, lookback, price_to_use)
     # Standardise ATR, and StdDev
-    standardised_atrs = zscore_standardisation(calculate_rolling_atr(series, lookback))
+    standardised_atrs = zscore_standardisation(calculate_rolling_atr(series, price_to_use, lookback))
     standardised_std_dev = zscore_standardisation(std_dev)
 
     # Combine indicators into one composite measure
     combined_score = zscore_standardisation(std_atr_stddev(standardised_atrs, standardised_std_dev))
-
     vol_classifications = classify_volatility(combined_score)
-
     # Calculate overall and period volatility based on periods
     series_vol = analyse_series_vol(vol_classifications)
 
-    return {
+    volatility_stats = {
         "combined_score": combined_score,
         "period_vol": vol_classifications,
         "series_vol": series_vol,
@@ -29,8 +27,14 @@ def get_volatility_statistics(series, lookback, asset, time_frame, date):
         "stddev": standardised_std_dev,
         'asset': asset,
         'time_frame': time_frame,
-        'date': date
+        'start_date': start_date,
+        'end_date': end_date,
     }
+
+    if print_output:
+        print_volatility_analysis(volatility_stats)
+
+    return volatility_stats
 
 # Given the monthly volatilities, determine the overall volatility of a time series
 def analyse_series_vol(monthly_volatility):
@@ -140,8 +144,8 @@ def std_atr_stddev(standardised_atrs, standardised_stddev):
 
 # Standard deviation of log returns over a rolling window (lookback)
 # series is expected to be a DataFrame with a 'Close' column (like R's xts)
-def stddev_rolling_window(series, lookback):
-    close = pd.Series(series["Close"])
+def stddev_rolling_window(series, lookback, price_to_use):
+    close = pd.Series(series[f"{price_to_use}Close"])
     close_safe = close.where(close > 0, np.nan)
     returns = np.log(close_safe).diff(1)
     rolling_stddev = returns.rolling(window=lookback).std()
@@ -149,37 +153,38 @@ def stddev_rolling_window(series, lookback):
 
 # Neatly print out volatility analysis
 def print_volatility_analysis(result, max_periods=10):
-    print("\n📈 Volatility Diagnostic Summary")
-    print(f"\n Asset: {result.get('asset')}")
-    print(f"\n Date: {result.get('date')}")
-    print(f"\nTimeframe: {result.get('time_frame')}")
-    print("-" * 40)
+    info("\n\n\n📈 Volatility Diagnostic Summary")
+    info(f"Asset: {result.get('asset')}")
+    info(f"Start Date: {result.get('start_date')}")
+    info(f"End Date: {result.get('end_date')}")
+    info(f"Timeframe: {result.get('time_frame')}")
+    info("-" * 40)
 
     # Overall classification
     series_vol = result.get("series_vol", "Unknown")
-    print(f"Overall Series Volatility : {series_vol}")
+    info(f"Overall Series Volatility : {series_vol}")
 
     # Distribution of period classifications
     period_vol = result.get("period_vol", [])
     freq = Counter(period_vol)
-    print("\n🧮 Period Volatility Distribution:")
+    info("🧮 Period Volatility Distribution:")
     for label in ["Low", "Medium", "High", "Highly Volatile"]:
         count = freq.get(label, 0)
-        print(f"  → {label:<18}: {count}")
+        info(f"  → {label:<18}: {count}")
 
     # Composite score snapshot
     combined_score = result.get("combined_score", [])
     if isinstance(combined_score, (list, pd.Series)) and len(combined_score) > 0:
-        print("\n🔍 Composite Score Snapshot:")
+        info("🔍 Composite Score Snapshot:")
         scores = pd.Series(combined_score).dropna()
-        print(f"  Mean Score              : {scores.mean():.3f}")
-        print(f"  Std Dev of Score        : {scores.std():.3f}")
-        print(f"  Max Score               : {scores.max():.3f}")
-        print(f"  Min Score               : {scores.min():.3f}")
+        info(f"  Mean Score              : {scores.mean():.3f}")
+        info(f"  Std Dev of Score        : {scores.std():.3f}")
+        info(f"  Max Score               : {scores.max():.3f}")
+        info(f"  Min Score               : {scores.min():.3f}")
 
     # Optional: print first few period classifications
-    print("\n🕒 First Few Period Classifications:")
+    info("🕒 First Few Period Classifications:")
     for i, label in enumerate(period_vol[:max_periods]):
-        print(f"  Period {i + 1:<2} → {label}")
+        info(f"  Period {i + 1:<2} → {label}")
 
-    print("-" * 40)
+    info("-" * 40)

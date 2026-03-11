@@ -4,19 +4,24 @@ Version: 2.0.0
 Summary: A forex trading and backtesting framework
 Author-email: Max Carrington <maxcarrington0002@gmail.com>
 License: MIT
-Requires-Python: >=3.9
+Requires-Python: >=3.12
 Description-Content-Type: text/markdown
 Requires-Dist: numpy
 Requires-Dist: pandas
-Requires-Dist: statsmodels
 Requires-Dist: scipy
+Requires-Dist: statsmodels
+Requires-Dist: nolds
+Requires-Dist: hurst
+Requires-Dist: ta
+Requires-Dist: arch
 Requires-Dist: requests
 Requires-Dist: oandapyV20
 Requires-Dist: yfinance
-Requires-Dist: mplfinance
 Requires-Dist: matplotlib
+Requires-Dist: mplfinance
 Requires-Dist: seaborn
 Requires-Dist: PyYAML
+Requires-Dist: colorlog
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: black; extra == "dev"

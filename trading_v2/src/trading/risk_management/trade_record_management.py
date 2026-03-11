@@ -4,6 +4,8 @@ from datetime import datetime
 
 from src.trading.risk_management import take_profit
 from src.trading.risk_management.position_sizing import initialise_kelly
+from src.trading.risk_management.take_profit import fixed_take_profit
+from src.trading.risk_management.stop_losses import fixed_stop_loss
 
 class TradeRecords:
     def __init__(self):
@@ -205,8 +207,8 @@ class TradeRecords:
                 if trade_record["entry_price"] is None:
                     trade_record["entry_price"] = todays_open
                     trade_type = trade_record["trade_type"]
-                    trade_record["take_profit"] = calculate_take_profit(trade_type, todays_open)
-                    trade_record["stop_loss"] = calculate_stop_loss(trade_type, todays_open)
+                    trade_record["take_profit"] = fixed_take_profit(trade_type, todays_open)
+                    trade_record["stop_loss"] = fixed_stop_loss(trade_type, todays_open)
                     trade_records[i] = trade_record
                     if prompts_on:
                         print(f"Series {series_index}. A {trade_type} market order has been placed at {todays_open} "

@@ -1,14 +1,19 @@
 numpy
 pandas
-statsmodels
 scipy
+statsmodels
+nolds
+hurst
+ta
+arch
 requests
 oandapyV20
 yfinance
-mplfinance
 matplotlib
+mplfinance
 seaborn
 PyYAML
+colorlog
 
 [dev]
 pytest

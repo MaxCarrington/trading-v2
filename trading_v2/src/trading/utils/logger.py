@@ -7,9 +7,12 @@ from src.trading.utils.paths import get_logs_dir
 
 
 # Ensure logs directory exists
-LOGS_DIR = get_logs_dir()
-os.makedirs(LOGS_DIR, exist_ok=True)
+DEFAULT_LOG_DIR = get_logs_dir()
+todays_date = datetime.now().strftime("%Y%m%d")
+LOG_DIR = os.path.join(DEFAULT_LOG_DIR, todays_date)
 
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
 
 def _default_logger() -> logging.Logger:
     logger = logging.getLogger("trading")
@@ -39,30 +42,42 @@ def _default_logger() -> logging.Logger:
 # public logger instance
 log = _default_logger()
 
-
-def start_log(config_path: Optional[str] = None, config: Optional[Dict] = None, *, name_prefix: str = "backtest"):
-    """(Re)configure the module logger and add a file handler.
-
-    Creates a timestamped logfile under `LOGS_DIR`. If `config_path` is provided,
-    its base name is used as part of the logfile name.
-    """
+def start_log(
+    config_path: Optional[str] = None,
+    config: Optional[Dict] = None,
+    *,
+    name_prefix: str = "backtest",
+    log_subdir: Optional[str] = None,   # 👈 NEW
+):
     global log
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     if config_path:
         base = os.path.splitext(os.path.basename(config_path))[0]
         filename = f"{base}_{ts}.log"
     else:
         filename = f"{name_prefix}_{ts}.log"
 
-    log_path = os.path.join(LOGS_DIR, filename)
+    # 👇 choose directory dynamically
+    if log_subdir:
+        log_dir = os.path.join(LOG_DIR, log_subdir)
+    else:
+        log_dir = LOG_DIR
 
-    # Remove existing FileHandlers to avoid duplicate writes
+    os.makedirs(log_dir, exist_ok=True)
+
+    log_path = os.path.join(log_dir, filename)
+
+    # Remove existing FileHandlers
     for h in list(log.handlers):
         if isinstance(h, logging.FileHandler):
             log.removeHandler(h)
 
-    fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S")
+    fmt = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(message)s",
+        "%Y-%m-%d %H:%M:%S",
+    )
 
     try:
         fh = logging.FileHandler(log_path)
@@ -70,39 +85,30 @@ def start_log(config_path: Optional[str] = None, config: Optional[Dict] = None, 
         fh.setFormatter(fmt)
         log.addHandler(fh)
     except Exception:
-        # If file can't be opened, keep running with console only
         log.warning(f"Could not open log file for writing: {log_path}")
 
-    # Optionally print config to log
-    if config_path:
-        log.info(f"Using config file: {config_path}")
-    if config is not None:
-        try:
-            import yaml
-
-            text = yaml.safe_dump(config, sort_keys=False, default_flow_style=False).rstrip()
-        except Exception:
-            import json
-
-            text = json.dumps(config, indent=2)
-        for line in text.splitlines():
-            log.info(line)
-
-    log.info(f"Logging started — file={log_path}")
-
+    log.info(f"Logging started. Log file location={log_path}")
 
 # convenience wrappers
-def message(msg: str):
-    log.info(msg)
+def message(msg: str, file=None):
+    if file is not None:
+        log.info(f"{msg}.       File location: {file}")
+    else:
+        log.info(f"{msg}")
 
 
-def info(msg: str):
-    log.info(msg)
+def info(msg: str, file=None):
+    if file is not None:
+        log.info(f"{msg}.       File location: {file}")
+    else:
+        log.info(f"{msg}")
 
 
-def warning(msg: str):
-    log.warning(msg)
+def warning(msg: str, file):
+
+    log.warning(f"{msg}.       File location: {file}")
 
 
-def error(msg: str):
-    log.error(msg)
+def error(msg: str, file):
+    log.error(f"{msg}.       File location: {file}")
+

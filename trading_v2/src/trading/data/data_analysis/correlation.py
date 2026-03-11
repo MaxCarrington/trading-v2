@@ -2,12 +2,12 @@ import os
 import pandas as pd
 import numpy as np
 import src.trading.utils.constants as constants
-import sys
 from src.trading.data.data_analysis.analysis import find_periods_of_mean_rev_and_momentum
 from plotting.graphs import plot_volatiltiy_momentum_correlation_scatter
 from src.trading.utils.logger import info, warning
 
 def generate_and_plot_volatility_momentum_correlation(data_keys, data_values, data_map, pair, timeframe, start_date, end_date=None):
+    info(f"Current file is {__file__}")
     for key in data_keys:
         series = data_map[pair]
         if end_date is None:

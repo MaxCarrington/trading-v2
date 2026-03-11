@@ -4,7 +4,7 @@ import statsmodels.api as sm
 from src.trading.data.stat_tests.augmented_dickey_fuller import perform_adf_test
 from src.trading.data.stat_tests.hurst_exponent import calculate_hurst_exponent
 from src.trading.data.stat_tests.variance_ratio_test import perform_variance_ratio_test
-
+from src.trading.utils.logger import start_log, info, warning, error
 
 #  Calculates mean reversion statistics
 #   - Calculate the variance ratio for each time series
@@ -14,11 +14,10 @@ from src.trading.data.stat_tests.variance_ratio_test import perform_variance_rat
 #   - Score each time series out of 100 based on above
 #   - If score is higher than the set amount, the time series will be used for
 #     mean reversion
-def get_series_mean_rev_stats(series, asset, time_frame, date, threshold=0.05):
-    close = series['Close']
+def get_series_mean_rev_stats(series, asset, time_frame, start_date, end_date, price_to_use, threshold=0.05, print_output=False):
+    close = series[f"{price_to_use}Close"]
     score = 0
     consistency = 0
-
     # --- Run diagnostics ---
     h_val = calculate_hurst_exponent(close)
     vr_result = perform_variance_ratio_test(close)
@@ -54,10 +53,10 @@ def get_series_mean_rev_stats(series, asset, time_frame, date, threshold=0.05):
         'adf_result': adf_result,
         'half_life': half_life
     }
-
     half_life_duration = determine_half_life_quantile(attributes)
     half_life_score = calc_half_life_score(half_life_duration)
     score += half_life_score
+
 
     # --- Bonus for full agreement ---
     if score > 0 and consistency == 3:
@@ -71,8 +70,7 @@ def get_series_mean_rev_stats(series, asset, time_frame, date, threshold=0.05):
         'adf': adf_score / 20,
         'half_life': half_life_score / 20
     }
-
-    return {
+    mean_rev_stats = {
         'attributes': attributes,
         'mean_rev_score': score,
         'component_scores': component_scores,
@@ -80,8 +78,13 @@ def get_series_mean_rev_stats(series, asset, time_frame, date, threshold=0.05):
         'half_life_duration': half_life_duration,
         'asset': asset,
         'time_frame': time_frame,
-        'date': date
+        'start_date': start_date,
+        'end_date': end_date,
     }
+    if print_output:
+        print_mean_rev_analysis(mean_rev_stats)
+
+    return mean_rev_stats
 
 # Calculation of the half life of mean reversion for a given time series
 
@@ -175,98 +178,98 @@ def calc_half_life_score(duration_label):
     return scores.get(duration_label, None)
 
 # Prints mean reversion statistics in a readable manner
-def print_mean_rev_summary(stats):
+def print_mean_rev_analysis(stats):
     attrs = stats['attributes']
 
-    print(f"\n📊 **Mean Reversion Stats**")
-    print(f"Asset: {stats['asset']}")
-    print(f"Timeframe: {stats['time_frame']}")
-    print(f"Date: {stats['date']}")
-    print("-" * 50)
+    info(f"\n\n\n📊 **Mean Reversion Stats**")
+    info(f"Asset: {stats['asset']}")
+    info(f"Timeframe: {stats['time_frame']}")
+    info(f"Start Date: {stats['start_date']}")
+    info(f"End Date: {stats['end_date']}")
+    info("-" * 50)
 
     # --- Hurst Exponent ---
-    print("\n📈 Hurst Exponent:")
-    print(f"  - Value: {attrs['h_val']['hurst']}")
-    print(f"  - Classification: {attrs['h_val']['classification']}")
+    info("📈 Hurst Exponent:")
+    info(f"  - Value: {attrs['h_val']['hurst']}")
+    info(f"  - Classification: {attrs['h_val']['classification']}")
 
     # --- Variance Ratio Test ---
     vr = attrs['vr_result']
     vr_stats = vr.get('Stats', {})
 
-    print("\n🔁 Variance Ratio Test:")
-    print(f"  - Significant         : {vr.get('Significant')}")
-    print(f"  - Lag Used            : {vr.get('Lag')}")
-    print(f"  - Reason              : {vr.get('Reason', 'N/A')}")
+    info("🔁 Variance Ratio Test:")
+    info(f"  - Significant         : {vr.get('Significant')}")
+    info(f"  - Lag Used            : {vr.get('Lag')}")
+    info(f"  - Reason              : {vr.get('Reason', 'N/A')}")
     if vr_stats:
-        print(f"     • Test Statistic   : {vr_stats.get('stat', 'N/A'):.4f}")
-        print(f"     • p-value          : {vr_stats.get('p_value', 'N/A'):.4f}")
-        print(f"     • Variance Ratio   : {vr_stats.get('vr', 'N/A'):.4f}")
+        info(f"     • Test Statistic   : {vr_stats.get('stat', 'N/A'):.4f}")
+        info(f"     • p-value          : {vr_stats.get('p_value', 'N/A'):.4f}")
+        info(f"     • Variance Ratio   : {vr_stats.get('vr', 'N/A'):.4f}")
     else:
-        print("     • No valid statistics returned.")
+        info("     • No valid statistics returned.")
 
     # --- ADF Test ---
     adf = attrs['adf_result']
-    print("\n🧮 ADF Test:")
-    print(f"  - Stationarity Detected: {adf['is_stationary']}")
-    print(f"  - ADF Statistic: {adf['adf_statistic']:.4f}")
-    print(f"  - p-value: {adf['p_value']:.4f}")
-    print(f"  - Used Lag: {adf['used_lag']}")
-    print(f"  - Observations: {adf['n_obs']}")
-    print("  - Critical Values:")
+    info("🧮 ADF Test:")
+    info(f"  - Stationarity Detected: {adf['is_stationary']}")
+    info(f"  - ADF Statistic: {adf['adf_statistic']:.4f}")
+    info(f"  - p-value: {adf['p_value']:.4f}")
+    info(f"  - Used Lag: {adf['used_lag']}")
+    info(f"  - Observations: {adf['n_obs']}")
+    info("  - Critical Values:")
     for k, v in adf['critical_values'].items():
-        print(f"      • {k}: {v:.4f}")
-    print(f"  - Best IC (AIC/BIC): {adf['ic_best']:.4f}")
+        info(f"      • {k}: {v:.4f}")
+    info(f"  - Best IC (AIC/BIC): {adf['ic_best']:.4f}")
 
     # --- Half-Life ---
     hl = attrs['half_life']
-    print("\n⏳ Half-Life of Mean Reversion:")
-    print(f"  - With Intercept: {hl['HalfLife_WithIntercept']:.4f}")
-    print(f"  - No Intercept:   {hl['HalfLife_NoIntercept']:.4f}")
-    print(f"  - Duration Category: {stats['half_life_duration']}")
+    info("⏳ Half-Life of Mean Reversion:")
+    info(f"  - With Intercept: {hl['HalfLife_WithIntercept']:.4f}")
+    info(f"  - No Intercept:   {hl['HalfLife_NoIntercept']:.4f}")
+    info(f"  - Duration Category: {stats['half_life_duration']}")
 
     # --- Component Scores ---
     comp = stats['component_scores']
-    print("\n🧩 Component Scores:")
-    print(f"  - Hurst:     {comp['hurst']:.2f}")
-    print(f"  - VR:        {comp['vr']:.2f}")
-    print(f"  - ADF:       {comp['adf']:.2f}")
-    print(f"  - Half-Life: {comp['half_life']:.2f}")
+    info("🧩 Component Scores:")
+    info(f"  - Hurst:     {comp['hurst']:.2f}")
+    info(f"  - VR:        {comp['vr']:.2f}")
+    info(f"  - ADF:       {comp['adf']:.2f}")
+    info(f"  - Half-Life: {comp['half_life']:.2f}")
 
     # --- Final Score ---
-    # --- Final Score ---
-    print("\n🏁 Final Mean Reversion Summary:")
-    print(f"  - Total Raw Score       : {stats['mean_rev_score']} / 95")
-    print(f"  - Normalized Score      : {stats['normalized_score']:.2f} / 100")
-    print("\n🔍 Score Breakdown:")
+    info("🏁 Final Mean Reversion Summary:")
+    info(f"  - Total Raw Score       : {stats['mean_rev_score']} / 95")
+    info(f"  - Normalised Score      : {stats['normalised_score']:.2f} / 100")
+    info("🔍 Score Breakdown:")
 
     # Hurst
     hurst_class = attrs['h_val']['classification']
     hurst_score = comp['hurst'] * 20
-    print(f"  • Hurst Exponent        : {hurst_class} → +{int(hurst_score)} points")
+    info(f"  • Hurst Exponent        : {hurst_class} → +{int(hurst_score)} points")
 
     # Variance Ratio
     vr_reason = vr.get('Reason', 'N/A')
     vr_score = comp['vr'] * 15
-    print(f"  • Variance Ratio        : {vr_reason} → +{int(vr_score)} points")
+    info(f"  • Variance Ratio        : {vr_reason} → +{int(vr_score)} points")
 
     # ADF
     adf_pval = adf['p_value']
     adf_score = comp['adf'] * 20
     adf_reason = "Stationary" if adf_pval < 0.05 else "Non-stationary"
-    print(f"  • ADF Test              : {adf_reason} (p={adf_pval:.4f}) → +{int(adf_score)} points")
+    info(f"  • ADF Test              : {adf_reason} (p={adf_pval:.4f}) → +{int(adf_score)} points")
 
     # Half-Life
     hl_category = stats['half_life_duration']
     hl_score = comp['half_life'] * 20
-    print(f"  • Half-Life Duration    : {hl_category} → +{int(hl_score)} points")
+    info(f"  • Half-Life Duration    : {hl_category} → +{int(hl_score)} points")
 
     # Bonus
     bonus = stats['mean_rev_score'] - (hurst_score + vr_score + adf_score + hl_score)
     if bonus > 0:
-        print(f"  • Full Agreement Bonus  : +{bonus} points")
+        info(f"  • Full Agreement Bonus  : +{bonus} points")
 
     # Verdict
-    score = stats['normalized_score']
+    score = stats['normalised_score']
     if score >= 85:
         verdict = "✅ Strong Mean-Reversion Candidate"
     elif score >= 65:
@@ -276,7 +279,7 @@ def print_mean_rev_summary(stats):
     else:
         verdict = "❌ Not Suitable for Mean-Reversion Strategy"
 
-    print(f"\n🧠 Verdict                : {verdict}")
-    print("-" * 50)
+    info(f"🧠 Verdict                : {verdict}")
+    info("-" * 50)
 
 

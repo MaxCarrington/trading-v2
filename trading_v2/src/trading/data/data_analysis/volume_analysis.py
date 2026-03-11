@@ -6,20 +6,19 @@ from ta.trend import ema_indicator
 from scipy.stats import pearsonr
 
 from src.trading.utils.data_manipulation import zscore_standardisation
+from src.trading.utils.logger import start_log, info, warning, error
 
 warnings.filterwarnings("ignore", category=RuntimeWarning, message="Degrees of freedom <= 0 for slice")
 
 # Analyses periods of high trading volume and liquidity
-def combined_liquidity_analysis(series, asset, time_frame, date, vol_lookback=20, liquidity_thresh=0.6, window_size=10):
+def combined_liquidity_analysis(series, asset, time_frame, start_date, end_date, price_to_use, vol_lookback=20, liquidity_thresh=0.6, window_size=10, print_output=False):
+    info(f"Current file is {__file__}")
     # Identify high volume periods
     high_volume_periods = high_liquidity_periods(series, vol_lookback, liquidity_thresh)
-
     # Filter the series to only those periods
     high_vol_series = series.loc[high_volume_periods]
-
     # Estimate liquidity indicators on the high volume subset
-    liquidity_indicators = estimate_liquidity(high_vol_series, window_size)
-
+    liquidity_indicators = estimate_liquidity(high_vol_series, price_to_use, window_size)
     # Select final periods where liquidity is high
     high_liquidity_flags = liquidity_indicators['high_liquidity']
     if isinstance(high_liquidity_flags, pd.Series):
@@ -30,16 +29,14 @@ def combined_liquidity_analysis(series, asset, time_frame, date, vol_lookback=20
     vwap_series = liquidity_indicators['vwap']
     vwap_at_liquidity = vwap_series.loc[final_selection]
     reliability_at_liquidity = liquidity_indicators['reliability'].loc[final_selection]
-
     # Generate scores and regime tags for each windowed period
-    scores = [score_period(series, i, window_size) for i in range(window_size, len(series))]
+    scores = [score_period(series, i, window_size, price_to_use) for i in range(window_size, len(series))]
     regimes = [tag_regime(s['liquidity'], s['momentum']) for s in scores]
-
     # Attach timestamps to scores
     score_df = pd.DataFrame(scores, index=series.index[window_size:])
     score_df['regime'] = regimes
 
-    return {
+    liquidity_stats = {
         'high_volume_periods': high_volume_periods,
         'final_selection': final_selection,
         'liquidity_indicators': liquidity_indicators,
@@ -52,14 +49,20 @@ def combined_liquidity_analysis(series, asset, time_frame, date, vol_lookback=20
         'reliability_at_liquidity': reliability_at_liquidity,
         'asset': asset,
         'time_frame': time_frame,
-        'date': date
+        'start_date': start_date,
+        'end_date': end_date,
     }
 
+    if print_output:
+        print_liquidity_analysis(liquidity_stats)
+
+    return liquidity_stats
+
 # Scores periods based on the liquidity and momentum
-def score_period(series, idx, window):
+def score_period(series, idx, window, price_to_use):
     sub = series.iloc[idx-window:idx]
-    liq = estimate_liquidity(sub, window)['high_liquidity'].iloc[-1]
-    mom = vol_inc_with_trend(sub, window)['correlation']
+    liq = estimate_liquidity(sub, price_to_use, window)['high_liquidity'].iloc[-1]
+    mom = vol_inc_with_trend(sub, price_to_use, window)['correlation']
     return {'liquidity': liq, 'momentum': mom}
 
 # Determines the regime, resulting in either 'Breakout', 'Liquidity', 'Momentum' or 'Neutral'
@@ -124,12 +127,12 @@ def score_spike(last_price, mean_revert_price, threshold, cor_score_value, no_co
         return no_cor_score_value
 
 # For momentum, analyze increasing volume trends alongside price increases
-def vol_inc_with_trend(series, window_size):
+def vol_inc_with_trend(series, price_to_use, window_size):
     # EMA of volume using ta
     ewma_vol = ema_indicator(close=series['Volume'], window=window_size)
 
     # Detect price increases and apply EMA using ta
-    price_increases = detect_price_increase(series['Close'])
+    price_increases = detect_price_increase(series[f'{price_to_use}Close'])
     ewma_price_inc = ema_indicator(close=price_increases, window=window_size)
 
     # Align lengths
@@ -160,7 +163,7 @@ def detect_price_increase(prices):
     return price_increases
 
 # Estimates liquidity within high volume periods using volatility and VWAP
-def estimate_liquidity(series, window_size=10):
+def estimate_liquidity(series, price_to_use, window_size=10):
     if len(series.dropna()) < window_size:
         return {
             'high_liquidity': pd.Series(index=series.index, data=np.nan),
@@ -168,8 +171,8 @@ def estimate_liquidity(series, window_size=10):
             'reliability': pd.Series(index=series.index, data=np.nan)
         }
 
-    volatility = (series['High'] - series['Low']) / series['Low']
-    vwap = (series['High'] + series['Low'] + series['Close']) / 3
+    volatility = (series[f'{price_to_use}High'] - series[f'{price_to_use}Low']) / series[f'{price_to_use}Low']
+    vwap = (series[f'{price_to_use}High'] + series[f'{price_to_use}Low'] + series[f'{price_to_use}Close']) / 3
 
     avg_volume = series['Volume'].rolling(window=window_size).mean()
     avg_volatility = volatility.rolling(window=window_size).mean()
@@ -209,50 +212,51 @@ def high_liquidity_periods(series, vol_lookback, threshold):
 
 # Print function to neatly display results
 def print_liquidity_analysis(result):
-    print("\n💧 Liquidity Diagnostic Summary")
-    print(f"\n Asset: {result.get('asset')}")
-    print(f"\n Date: {result.get('date')}")
-    print(f"\nTimeframe: {result.get('time_frame')}")
-    print("-" * 40)
-    print(f"Lookback Window          : {result.get('lookback')}")
-    print(f"Liquidity Threshold      : {result.get('liquidity_thresh')}")
-    print(f"Volatility Window Size   : {result.get('window_size')}")
-    print(f"Total Periods Analyzed   : {result.get('total_periods')}")
-    print(f"High Volume Periods      : {len(result.get('high_volume_periods', []))}")
+    info("\n\n\n💧 Liquidity Diagnostic Summary")
+    info(f"Asset: {result.get('asset')}")
+    info(f"Start Date: {result.get('start_date')}")
+    info(f"End Date: {result.get('end_date')}")
+    info(f"Timeframe: {result.get('time_frame')}")
+    info("-" * 40)
+    info(f"Lookback Window          : {result.get('lookback')}")
+    info(f"Liquidity Threshold      : {result.get('liquidity_thresh')}")
+    info(f"Volatility Window Size   : {result.get('window_size')}")
+    info(f"Total Periods Analyzed   : {result.get('total_periods')}")
+    info(f"High Volume Periods      : {len(result.get('high_volume_periods', []))}")
 
     final_selection = result.get('final_selection', [])
-    print(f"High Liquidity Selections: {len(final_selection)}")
-    print("-" * 40)
+    info(f"High Liquidity Selections: {len(final_selection)}")
+    info("-" * 40)
 
     # 🕒 Print all high liquidity timestamps
     if len(final_selection) > 0:
-        print("🕒 All High Liquidity Timestamps")
+        info("🕒 All High Liquidity Timestamps")
         for ts in final_selection:
-            print(f"  → {ts}")
-        print("-" * 40)
+            info(f"  → {ts}")
+        info("-" * 40)
     else:
-        print("⚠️ No high liquidity periods detected.")
-        print("-" * 40)
+        info("⚠️ No high liquidity periods detected.")
+        info("-" * 40)
 
     # 💰 VWAP values at high liquidity periods
     vwap_liq = result.get('vwap-at_liquidity')
     if isinstance(vwap_liq, pd.Series) and not vwap_liq.empty:
-        print("💰 VWAP at High Liquidity Periods:")
-        print(vwap_liq)
-        print("-" * 40)
+        info("💰 VWAP at High Liquidity Periods:")
+        info(vwap_liq)
+        info("-" * 40)
 
     # 📊 Reliability scores at high liquidity periods
     reliability = result.get('reliability_at_liquidity')
     if isinstance(reliability, pd.Series) and not reliability.empty:
-        print("📊 Reliability Scores at High Liquidity Periods:")
-        print(reliability)
-        print("-" * 40)
+        info("📊 Reliability Scores at High Liquidity Periods:")
+        info(reliability)
+        info("-" * 40)
 
     # 🧭 Regime tags from scored windows
     regime_scores = result.get('regime_scores')
     if isinstance(regime_scores, pd.DataFrame) and not regime_scores.empty:
-        print("🧭 Regime Tags (first 10 scored periods):")
-        print(regime_scores[['regime']].head(10))
-        print("-" * 40)
+        info("🧭 Regime Tags (first 10 scored periods):")
+        info(regime_scores[['regime']].head(10))
+        info("-" * 40)
 
 

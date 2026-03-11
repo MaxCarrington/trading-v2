@@ -1,30 +1,44 @@
-import sys
+import src.trading.utils.constants as constants
 
-from src.trading.data.data_analysis.mean_rev_analysis import get_series_mean_rev_stats, print_mean_rev_summary
-from src.trading.data.data_analysis.momentum_analysis import get_momentum_statistics, print_momentum_statistics
+from src.trading.data.data_analysis.mean_rev_analysis import get_series_mean_rev_stats, print_mean_rev_analysis
+from src.trading.data.data_analysis.momentum_analysis import get_momentum_statistics, print_momentum_analysis
 from src.trading.data.data_analysis.volatility_analysis import get_volatility_statistics, print_volatility_analysis
 from src.trading.data.data_analysis.volume_analysis import combined_liquidity_analysis, print_liquidity_analysis
-from src.trading.utils.config import load_strategy_configs
+from src.trading.utils.config import load_config
+from src.trading.utils.logger import start_log, info, warning, error
 
+CONFIGS_DIR = constants.CONFIGS_DIR
 # Perform data analysis to generate mean-reversion, momentum, volatility and volume data
-def perform_analysis(series, asset, timeframe, date, is_forex=False):
+def perform_analysis(series, asset, timeframe, start_date, end_date, config_file, is_forex=True, print_output=False):
     # Load in the config files
-    thresholds, analysis_params, setup_params, labels = load_strategy_configs()
-
+    info(f"Current file is {__file__}")
+    info(f"Performing analysis for {asset} on {timeframe} from {start_date} to {end_date}")
+    analysis_params = load_config(config_file)
+    info(f"Analysis Parameters: {analysis_params} ")
     liquidity_stats = None
     # Generate strategy data analysis
-    momentum_stats = get_momentum_statistics(series, analysis_params["momentum"]["p-val_len_thresh"], asset, timeframe, date)
-    mean_rev_stats = get_series_mean_rev_stats(series, asset, timeframe, date)
-    volatility_stats = get_volatility_statistics(series, analysis_params["volatility"]["lookback"], asset, timeframe, date)
+    info("Generating momentum statistics.....\n \n")
+    momentum_stats = get_momentum_statistics(series, analysis_params["p-val_len_thresh"], asset, timeframe, start_date, end_date, analysis_params["price_to_use"], print_output=print_output)
+    info("Generating mean reversion statistics.....\n \n")
+    mean_rev_stats = get_series_mean_rev_stats(series, asset, timeframe, start_date, end_date, analysis_params["price_to_use"], print_output=print_output)
+    info("Generating volatility statistics......\n \n")
+    volatility_stats = get_volatility_statistics(series, analysis_params["volatility_lookback"], asset, timeframe, start_date, end_date, analysis_params["price_to_use"], print_output=print_output)
 
     if not is_forex:
-        liquidity_stats = combined_liquidity_analysis(series, asset, timeframe, date)
+        info("Generating liquidity statistics\n \n")
+        liquidity_stats = combined_liquidity_analysis(series, asset, timeframe, start_date, end_date, analysis_params["price_to_use"], print_output=print_output)
 
-    determine_momentum_or_mean_rev(momentum_stats, mean_rev_stats, volatility_stats, liquidity_stats)
+    strategy = determine_momentum_or_mean_rev(momentum_stats, mean_rev_stats, volatility_stats, liquidity_stats, print_output=print_output)
+    return {
+        "strategy": strategy,
+        "momentum_stats": momentum_stats,
+        "mean_rev_stats": mean_rev_stats,
+        "volatility_stats": volatility_stats,
+        "liquidity_stats": liquidity_stats
+    }
 
 # Determines the best strategy to used between normalised (z-score) data analysis results
 def determine_momentum_or_mean_rev(momentum_stats=None, mean_rev_stats=None, volatility_stats=None, liquidity_stats=None, print_output=False, minimum_strategy_thrsh=50):
-
     mr_z_score = mean_rev_stats['normalised_score']
     momentum_z_score = momentum_stats['normalised_score']
 
@@ -39,8 +53,11 @@ def determine_momentum_or_mean_rev(momentum_stats=None, mean_rev_stats=None, vol
         strategy = "none"
 
     if print_output:
-        print(f"\n🧠 Strategy Verdict: {verdict}")
+        info(f"Mean Reversion z-score: {mr_z_score}")
+        info(f"Momentum z-score: {momentum_z_score}")
+        info(f"🧠 Strategy Verdict: {verdict}")
         print("-" * 50)
+        info("-" * 50)
 
     return strategy
 
@@ -68,40 +85,60 @@ def is_momentum(momentum_stats, volatility_stats, minimum_momentum_thresh=70, hi
 
 # A test to iterate through every data point in a series determining what type of pattern is being shown
 # 100 periods is needed as a minimum as hurst exponent calculation requires 100 minimum
-def find_periods_of_mean_rev_and_momentum(series, asset, timeframe, date, min_periods=100):
-    thresholds, analysis_params, setup_params, labels = load_strategy_configs()
-    i = min_periods
-    mean_rev_periods = []
-    momentum_periods = []
-    volatility_stats = None  # Initialize to avoid UnboundLocalError
+def find_periods_of_mean_rev_and_momentum(series,
+                                          asset,
+                                          timeframe,
+                                          start_date,
+                                          end_date,
+                                          p_val_len_thresh,
+                                          volatility_lookback,
+                                          price_to_use,
+                                          min_periods=100,
+                                          print_output=False):
+
+    i = min_periods  # Start index after enough data exists to form the first rolling window
+    mean_rev_periods = []  # Stores (start_idx, end_idx) for detected mean-reversion regimes
+    momentum_periods = []  # Stores (start_idx, end_idx) for detected momentum regimes
+    volatility_stats = None  # Volatility stats are computed once and reused
+
+    # Outer loop: scan forward through the series to detect regime starts
     while i < len(series):
+        # Rolling window ending at index i, used to classify current regime
         window = series.iloc[i - min_periods:i]
-        momentum_stats = get_momentum_statistics(window, analysis_params["momentum"]["window_size"], asset, timeframe, date)
-        mean_rev_stats = get_series_mean_rev_stats(window, asset, timeframe, date)
+        # Compute momentum statistics for the current window
+        momentum_stats = get_momentum_statistics(window, p_val_len_thresh, asset, timeframe, start_date, end_date, price_to_use, print_output=print_output)
+        # Compute mean-reversion statistics for the same window
+        mean_rev_stats = get_series_mean_rev_stats(window, asset, timeframe, start_date, end_date, price_to_use, print_output=print_output)
+        # Compute volatility statistics once (used for context, not regime detection)
         if volatility_stats is None:
             # Only compute once, outside the regime loop
-            volatility_stats = get_volatility_statistics(series, analysis_params["volatility"]["lookback"], asset, timeframe, date)
-
-        current_pattern = determine_momentum_or_mean_rev(momentum_stats, mean_rev_stats)
-
+            volatility_stats = get_volatility_statistics(series, volatility_lookback, asset, timeframe, start_date, end_date, price_to_use, print_output=print_output)
+        # Classify the current regime based on momentum vs mean-reversion evidence
+        current_pattern = determine_momentum_or_mean_rev(momentum_stats, mean_rev_stats, print_output=print_output)
+        # Mark the start index of the detected regime
         start_idx = i
+        # Inner loop: extend the current regime forward until classification changes
         while i < len(series):
+            # Build the next rolling window one step forward
             next_window = series.iloc[i - min_periods:i]
-            next_momentum_stats = get_momentum_statistics(next_window, analysis_params["momentum"]["window_size"], asset, timeframe, date)
-            next_mean_rev_stats = get_series_mean_rev_stats(next_window, asset, timeframe, date)
-            next_pattern = determine_momentum_or_mean_rev(next_momentum_stats, next_mean_rev_stats)
-
+            # Recompute statistics for the next window
+            next_momentum_stats = get_momentum_statistics(next_window, p_val_len_thresh, asset, timeframe, start_date, end_date, price_to_use, print_output=print_output)
+            next_mean_rev_stats = get_series_mean_rev_stats(next_window, asset, timeframe, start_date, end_date, price_to_use, print_output=print_output)
+            # Classify the regime at the new position
+            next_pattern = determine_momentum_or_mean_rev(next_momentum_stats, next_mean_rev_stats, print_output=print_output)
+            # Stop extending the regime if classification changes
             if next_pattern != current_pattern:
                 break
+            # Continue extending the current regime forward
             i += 1
-
+        # Store the detected regime period once it ends
         if current_pattern == "momentum":
             momentum_periods.append((start_idx, i - 1))
         elif current_pattern == "mean_reversion":
             mean_rev_periods.append((start_idx, i - 1))
-
+        # Move to the next index to search for a new regime
         i += 1  # move to next starting point
-
+    # Combine both regime types into a single labelled list
     regime_periods = [
         (start, end, "mean_reversion") for (start, end) in mean_rev_periods
     ] + [
@@ -114,5 +151,6 @@ def find_periods_of_mean_rev_and_momentum(series, asset, timeframe, date, min_pe
         "regime_periods": regime_periods,
         "volatility_stats": volatility_stats
     }
+
 
 

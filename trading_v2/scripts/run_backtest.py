@@ -342,10 +342,3 @@ def run_backtest(strategy, params):
         print(pnl_df.tail())
         print("Final Net Worth:", networth_vec[-1])
         print("k (days in position %):", k_ratio)
-
-
-
-params_list = get_params(config)
-strategy_name = get_strategy("momentum_v1.2")
-
-run_backtest("momentum_v1.2", params_list)

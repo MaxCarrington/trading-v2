@@ -11,9 +11,7 @@
 # A buy signal occurs when RSI is high (overbought), the MA trends upward, and the current open exceeds the previous close,
 # indicating strong upward momentum. A sell signal occurs when RSI is low (oversold), the MA trends downward, and the open
 # is below the previous close, signaling sustained downward momentum. Volatility is monitored to filter entries.
-
 import pandas as pd
-import sys
 
 from src.trading.data.data_analysis.momentum_analysis import get_momentum_statistics, get_momentum_direction
 from src.trading.data.data_analysis.analysis import is_momentum

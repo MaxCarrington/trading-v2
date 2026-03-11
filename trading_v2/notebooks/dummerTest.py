@@ -10,7 +10,7 @@
 
 
 from trading.utils.paths import get_time_series_file_path, get_time_series_period_df, stitch_dataframes# return format: [(declaration date, payment date)]
-from trading.data.dividends import get_dividend_dates
+#from trading.data.dividends import get_dividend_dates
 
 # Gets all time series data from the period between dividend declaration date and payment date 
 def test_period(symbol):
