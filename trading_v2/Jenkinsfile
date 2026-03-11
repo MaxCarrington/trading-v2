@@ -17,5 +17,10 @@ pipeline {
                 echo 'Jenkins is successfully connected to Bitbucket!'
             }
         }
+        stage('Test Connection 4') {
+            steps {
+                echo 'Jenkins is successfully connected to Bitbucket!'
+            }
+        }
     }
 }
