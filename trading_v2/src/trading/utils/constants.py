@@ -5,7 +5,7 @@ from pathlib import Path
 # Define root and key directories
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, os.pardir))
 SRC_DIR = os.path.join(ROOT_DIR, "src")
-DATA_DIR = os.path.join(ROOT_DIR, "data")
+DATA_DIR = os.environ.get("TRADING_DATA_DIR") or os.path.join(ROOT_DIR, "data")
 TRADING_DIR = os.path.join(SRC_DIR, "trading")
 LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 SCIPTS_DIR = os.path.join(ROOT_DIR, "scripts")
