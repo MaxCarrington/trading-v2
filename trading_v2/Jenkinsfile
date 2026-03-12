@@ -42,8 +42,7 @@ pipeline {
             steps {
                 echo "Verifying Python environment..."
                 sh "${PYTHON} --version"
-                sh "pwd"
-                sh "ls -la ${PROJECT_DIR}/"
+                sh "${PYTHON} -c \"import os; v = os.environ.get('TRADING_DATA_DIR', 'NOT SET'); print('TRADING_DATA_DIR:', v)\""
             }
         }
 
