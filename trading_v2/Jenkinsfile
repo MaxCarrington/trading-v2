@@ -43,6 +43,7 @@ pipeline {
                 echo "Verifying Python environment..."
                 sh "${PYTHON} --version"
                 sh "${PYTHON} -c \"import os; v = os.environ.get('TRADING_DATA_DIR', 'NOT SET'); print('TRADING_DATA_DIR:', v)\""
+                sh "cd ${PROJECT_DIR} && PYTHONPATH=. ${PYTHON} -c \"import src.trading.utils.constants as c; print('constants.DATA_DIR:', c.DATA_DIR)\""
             }
         }
 
