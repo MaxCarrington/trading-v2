@@ -1,19 +1,15 @@
 pipeline {
     agent any
 
-    // -----------------------------------------------------------------------
-    // Environment variables shared across all stages
-    // -----------------------------------------------------------------------
     environment {
         VENV_DIR    = '.venv'
-        CONFIG_FILE = 'backtest_config.yaml'   // relative to configs/
+        CONFIG_FILE = 'backtest_config.yaml'
+        // Subdirectory within the repo where the project lives
+        PROJECT_DIR = 'trading_v2'
     }
 
-    // -----------------------------------------------------------------------
-    // Pipeline options
-    // -----------------------------------------------------------------------
     options {
-        timestamps()                          // prefix every log line with time
+        timestamps()
         buildDiscarder(logRotator(numToKeepStr: '20'))
     }
 
@@ -32,12 +28,14 @@ pipeline {
         stage('Setup Python Environment') {
         // -------------------------------------------------------------------
             steps {
-                sh '''
-                    python3 -m venv ${VENV_DIR}
-                    . ${VENV_DIR}/bin/activate
-                    pip install --upgrade pip --quiet
-                    pip install -e ".[dev]" --quiet
-                '''
+                dir("${PROJECT_DIR}") {
+                    sh '''
+                        python3 -m venv ${VENV_DIR}
+                        . ${VENV_DIR}/bin/activate
+                        pip install --upgrade pip --quiet
+                        pip install -e ".[dev]" --quiet
+                    '''
+                }
             }
         }
 
@@ -45,10 +43,12 @@ pipeline {
         stage('Lint') {
         // -------------------------------------------------------------------
             steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    ruff check src/ scripts/ --output-format=text || true
-                '''
+                dir("${PROJECT_DIR}") {
+                    sh '''
+                        . ${VENV_DIR}/bin/activate
+                        ruff check src/ scripts/ --output-format=text || true
+                    '''
+                }
             }
         }
 
@@ -56,14 +56,16 @@ pipeline {
         stage('Unit Tests') {
         // -------------------------------------------------------------------
             steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    pytest tests/ -v --tb=short --junitxml=test_results.xml || true
-                '''
+                dir("${PROJECT_DIR}") {
+                    sh '''
+                        . ${VENV_DIR}/bin/activate
+                        pytest tests/ -v --tb=short --junitxml=test_results.xml || true
+                    '''
+                }
             }
             post {
                 always {
-                    junit allowEmptyResults: true, testResults: 'test_results.xml'
+                    junit allowEmptyResults: true, testResults: "${PROJECT_DIR}/test_results.xml"
                 }
             }
         }
@@ -72,10 +74,12 @@ pipeline {
         stage('Run Backtest') {
         // -------------------------------------------------------------------
             steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    python scripts/run_backtest.py --config ${CONFIG_FILE}
-                '''
+                dir("${PROJECT_DIR}") {
+                    sh '''
+                        . ${VENV_DIR}/bin/activate
+                        python scripts/run_backtest.py --config ${CONFIG_FILE}
+                    '''
+                }
             }
         }
 
@@ -83,10 +87,12 @@ pipeline {
         stage('Generate Performance Report') {
         // -------------------------------------------------------------------
             steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    python scripts/generate_metrics_report.py
-                '''
+                dir("${PROJECT_DIR}") {
+                    sh '''
+                        . ${VENV_DIR}/bin/activate
+                        python scripts/generate_metrics_report.py
+                    '''
+                }
             }
         }
 
@@ -94,27 +100,22 @@ pipeline {
         stage('Publish Results') {
         // -------------------------------------------------------------------
             steps {
-                // Archive raw CSVs and JSON metrics so they are downloadable
-                archiveArtifacts artifacts: 'results/**/*.csv, results/**/*.json',
+                archiveArtifacts artifacts: "${PROJECT_DIR}/results/**/*.csv, ${PROJECT_DIR}/results/**/*.json",
                                  allowEmptyArchive: true,
                                  fingerprint: true
 
-                // Render the HTML report as a Jenkins build page
                 publishHTML(target: [
-                    allowMissing:         false,
+                    allowMissing:          false,
                     alwaysLinkToLastBuild: true,
-                    keepAll:              true,
-                    reportDir:            'results/reports',
-                    reportFiles:          'performance_report.html',
-                    reportName:           'Backtest Performance Report'
+                    keepAll:               true,
+                    reportDir:             "${PROJECT_DIR}/results/reports",
+                    reportFiles:           'performance_report.html',
+                    reportName:            'Backtest Performance Report'
                 ])
             }
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Post-build actions
-    // -----------------------------------------------------------------------
     post {
         success {
             echo "Backtest pipeline completed successfully - build #${env.BUILD_NUMBER}"
