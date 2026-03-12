@@ -304,7 +304,7 @@ def run_backtest(strategy, params):
     for pair in params["pairs"]:
         year=params["year"]
         date=params["date"]
-        data_csv = os.path.join(constants.PROJECT_ROOT,"data","raw","oanda","forex",f"{pair}", f"{year}",f"{params['timeframe']}", "merged", f"{pair}_{date}.csv")
+        data_csv = os.path.join(constants.OANDA_FOREX_DATA_DIR, f"{pair}", f"{year}", f"{params['timeframe']}", "merged", f"{pair}_{date}.csv")
         series = load_mid_ohlcv(data_csv)
 
         # Ensure backtester receives a list of DataFrames (even if only one)
