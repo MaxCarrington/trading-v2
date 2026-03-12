@@ -107,3 +107,5 @@ YEAR_REGEX = r"^\d{4}$"
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 CONFIG_DEFAULT = os.path.join(CONFIGS_DIR, "momentum_v1.2_analysis_config.yaml")
+
+ASSETS_CONFIG_DEFAULT = os.path.join(CONFIGS_DIR, "asset_config.yaml")

@@ -189,12 +189,12 @@ def momentum_strategy_v1_2(
         "store": store,
     }
 
-def analyse_momentum(store, symbol, params, timeframe, date, trade_high_volatility, trade_w_volatility, momentum_threshold=70, high_volatility_thresh = 70, low_volatility_thresh = 30):
+def analyse_momentum(store, symbol, params, timeframe, start_date, end_date=None, trade_high_volatility=True, trade_w_volatility=True, momentum_threshold=70, high_volatility_thresh = 70, low_volatility_thresh = 30):
     df = store["ohlcv"][symbol]
-    momentum_stats = get_momentum_statistics(df, params['momentum_len_thresh'][symbol], symbol, timeframe, date)
+    momentum_stats = get_momentum_statistics(df, params['momentum_len_thresh'][symbol], symbol, timeframe,start_date, end_date, price_to_use="Mid")
     store["momentum_score"][symbol] = momentum_stats["normalised_score"]
 
-    volatility_stats = get_volatility_statistics(df, params["lookback"][symbol], symbol, timeframe, date)
+    volatility_stats = get_volatility_statistics(df, params["lookback"][symbol], symbol, timeframe, start_date, end_date, price_to_use="Mid")
 
     momentum_found, normalised_score = is_momentum(momentum_stats, volatility_stats, momentum_threshold, trade_high_volatility=trade_high_volatility, trade_w_volatility=trade_w_volatility)
 

@@ -7,10 +7,14 @@ symbols:
   - "AUD_USD"
 
 timeframe: "D"
-date: "2025"
+start_date: "2025"
+end_date: "2025"
 year: "2025"
 
 parameters:
+  momentum_lookback: 12
+  lookback:
+    AUD_USD: 12
   rsi_lookback:
     AUD_USD: 12
   ma_lookback:

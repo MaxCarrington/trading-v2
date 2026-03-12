@@ -1,11 +1,13 @@
 import sys, os
 import pandas as pd
 from datetime import datetime
-
+import math
 import src.trading.utils.constants as constants
 from src.trading.utils.config import load_config
 from src.trading.strategies.strategy_loader import get_strategy, get_params
 from src.trading.utils.general_utils import load_mid_ohlcv
+from src.trading.utils.logger import start_log, info, warning, error
+from trading.utils.data_manipulation import get_forex_data, create_asset_dictonary
 
 #--------------------------------------------------------------------------------
 # Capture command-line arguments
@@ -95,6 +97,7 @@ def find_pnl(prices, old_pos, market_order,
 
 def get_initial_capital():
     return 100
+
 # Backtester that simulates a live environment for multiple series
 def backtest_live(data_list, strategy_function, params, slippage_multiplier, strategy_name):
     num_periods = len(data_list[0])  # Assumes all series have same number of rows

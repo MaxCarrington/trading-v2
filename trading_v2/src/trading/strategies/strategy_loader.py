@@ -1,5 +1,6 @@
 from src.trading.strategies.momentum_v1_2 import momentum_strategy_v1_2
 
+
 def get_strategy(strategy_name: str):
     print(strategy_name)
     if strategy_name == 'momentum_v1.2':
@@ -19,7 +20,8 @@ def get_params(config: dict):
     strategy_name = config.get("strategy")
     pairs = config.get("symbols", [])
     timeframe = config.get("timeframe")
-    date = config.get("date")
+    start_date = config.get("start_date")
+    end_date = config.get("end_date")
     year = config.get("year")
 
     if isinstance(pairs, str):
@@ -30,10 +32,13 @@ def get_params(config: dict):
             "strategy_name": strategy_name,
             "pairs": pairs,
             "timeframe": timeframe,
-            "date": date,
+            "start_date": start_date,
+            "end_date": end_date,
             "year": year,
             # pull parameters directly from config if present, else defaults
-            "momentum_lookback": config.get("parameters", {}).get("rsi_lookback", {pair: 12 for pair in pairs}),
+            "date": start_date,
+            "momentum_lookback": config.get("parameters", {}).get("momentum_lookback", 12),
+            "lookback": config.get("parameters", {}).get("lookback", {pair: 12 for pair in pairs}),
             "rsi_lookback": config.get("parameters", {}).get("rsi_lookback", {pair: 12 for pair in pairs}),
             "ma_lookback": config.get("parameters", {}).get("ma_lookback", {pair: 9 for pair in pairs}),
             "ma_thresh": config.get("parameters", {}).get("ma_thresh", {pair: 0.66 for pair in pairs}),
