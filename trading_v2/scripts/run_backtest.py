@@ -16,7 +16,7 @@ from src.trading.utils.general_utils import load_mid_ohlcv
 #--------------------------------------------------------------------------------
 
 # Pick the provided path if present, otherwise use default
-config_path = sys.argv[2] if len(sys.argv) > 2 and sys.argv[1] == "--config" else get_config_file_default()
+config_path = sys.argv[2] if len(sys.argv) > 2 and sys.argv[1] == "--config" else constants.CONFIG_DEFAULT
 config = load_config(config_path)
 
 # Set up logging
