@@ -28,12 +28,12 @@ pipeline {
         // Direct path to the conda environment's Python binary
         PYTHON = "/opt/homebrew/Caskroom/miniconda/base/envs/trading-env/bin/python"
 
-        // Absolute path to the market data directory on this machine.
-        // This overrides the default DATA_DIR in constants.py so Jenkins can
-        // find data that isn't committed to git.
-        // Set this to wherever your data/ folder actually lives, e.g.:
-        //   /Users/maxcarrington/Dev/trading_v2/data
-        TRADING_DATA_DIR = "/Users/maxcarrington/Library/Mobile Documents/com~apple~CloudDocs/Repo's/trading_v2/data"
+        // TRADING_DATA_DIR is intentionally NOT set here — the path contains
+        // special characters (spaces, apostrophe) that break shell quoting.
+        // Set it once in the Jenkins UI instead:
+        //   Manage Jenkins → System → Global properties → Environment variables
+        //   Name:  TRADING_DATA_DIR
+        //   Value: /Users/maxcarrington/Library/Mobile Documents/com~apple~CloudDocs/Repo's/trading_v2/data
     }
 
     stages {
@@ -44,8 +44,6 @@ pipeline {
                 sh "${PYTHON} --version"
                 sh "pwd"
                 sh "ls -la ${PROJECT_DIR}/"
-                sh "echo 'TRADING_DATA_DIR='${TRADING_DATA_DIR}"
-                sh "grep 'TRADING_DATA_DIR\\|DATA_DIR' ${PROJECT_DIR}/src/trading/utils/constants.py"
             }
         }
 
