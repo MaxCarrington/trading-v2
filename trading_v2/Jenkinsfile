@@ -19,8 +19,11 @@ pipeline {
         // a workspace wipe (e.g. /var/jenkins_home/backtest_results.db).
         BACKTEST_DB = "${WORKSPACE}/backtest_results.db"
 
+        // Subdirectory within the repo where the project lives
+        PROJECT_DIR = "trading_v2"
+
         // Folder where strategy config files live (relative to repo root)
-        CONFIGS_DIR = "configs"
+        CONFIGS_DIR = "trading_v2/configs"
 
         // Direct path to the conda environment's Python binary
         PYTHON = "/opt/homebrew/Caskroom/miniconda/base/envs/trading-env/bin/python"
@@ -33,33 +36,32 @@ pipeline {
                 echo "Verifying Python environment..."
                 sh "${PYTHON} --version"
                 sh "pwd"
-                sh "ls -la"
-                sh "ls -la trading_v2/"
+                sh "ls -la ${PROJECT_DIR}/"
             }
         }
 
         stage('Run Backtests') {
             steps {
                 script {
-                    // Find every *.json config file in the configs directory
+                    // Find every backtest_*.yaml config file in the configs directory
                     def configs = sh(
-                        script: "find ${CONFIGS_DIR} -name '*.yaml' | sort",
+                        script: "find ${CONFIGS_DIR} -name 'backtest_*.yaml' | sort",
                         returnStdout: true
-                    ).trim().split('\n')
+                    ).trim()
 
-                    if (configs == ['']) {
-                        error("No config files found in ${CONFIGS_DIR}/")
+                    if (configs == '') {
+                        error("No backtest_*.yaml config files found in ${CONFIGS_DIR}/")
                     }
 
-                    for (config in configs) {
+                    configs.split('\n').each { config ->
                         def metricsFile = config.replace('.yaml', '_metrics.json')
-                        echo "▶ Running backtest for: ${config}"
+                        echo "Running backtest for: ${config}"
 
-                        // 1. Run the backtest — your script must write metrics to metricsFile
-                        sh "${PYTHON} run_backtest.py --config ${config}"
+                        // 1. Run the backtest — saves trade records CSV to results/
+                        sh "${PYTHON} ${PROJECT_DIR}/scripts/run_backtest.py --config ${config.replace('trading_v2/configs/', '')}"
 
-                        // 2. Save results to SQLite
-                        sh "${PYTHON} save_results.py --config ${config} --metrics-file ${metricsFile}"
+                        // 2. Compute metrics and persist to SQLite
+                        sh "${PYTHON} ${PROJECT_DIR}/scripts/save_results.py --config ${config} --metrics-file ${metricsFile} --db ${BACKTEST_DB} --build ${env.BUILD_NUMBER}"
                     }
                 }
             }
@@ -68,20 +70,20 @@ pipeline {
         stage('Generate Report') {
             steps {
                 echo "Generating HTML report..."
-                sh "${PYTHON} generate_report.py --output reports/report.html --last 20"
+                sh "${PYTHON} ${PROJECT_DIR}/scripts/generate_report.py --output ${PROJECT_DIR}/reports/report.html --last 20 --db ${BACKTEST_DB}"
             }
         }
 
         stage('Publish Report') {
             steps {
                 publishHTML(target: [
-                    allowMissing:         false,
+                    allowMissing:          false,
                     alwaysLinkToLastBuild: true,
-                    keepAll:              true,
-                    reportDir:            'reports',
-                    reportFiles:          'report.html',
-                    reportName:           'Backtest Report',
-                    reportTitles:         'Backtest Results'
+                    keepAll:               true,
+                    reportDir:             'trading_v2/reports',
+                    reportFiles:           'report.html',
+                    reportName:            'Backtest Report',
+                    reportTitles:          'Backtest Results'
                 ])
             }
         }
