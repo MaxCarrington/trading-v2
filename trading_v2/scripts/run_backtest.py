@@ -93,6 +93,8 @@ def find_pnl(prices, old_pos, market_order,
         'old_value': old_value
     }
 
+def get_initial_capital():
+    return 100
 # Backtester that simulates a live environment for multiple series
 def backtest_live(data_list, strategy_function, params, slippage_multiplier, strategy_name):
     num_periods = len(data_list[0])  # Assumes all series have same number of rows
