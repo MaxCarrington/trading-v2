@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 import src.trading.utils.constants as constants
-from src.trading.utils.config import load_config, get_config_file_default, get_initial_capital
+from src.trading.utils.config import load_config
 from src.trading.strategies.strategy_loader import get_strategy, get_params
 from src.trading.utils.general_utils import load_mid_ohlcv
 
@@ -342,3 +342,9 @@ def run_backtest(strategy, params):
         print(pnl_df.tail())
         print("Final Net Worth:", networth_vec[-1])
         print("k (days in position %):", k_ratio)
+
+
+if __name__ == "__main__":
+    strategy = get_strategy(config["strategy"])
+    params = get_params(config)
+    run_backtest(strategy, params)

@@ -1,16 +1,129 @@
 pipeline {
     agent any
 
+    // -----------------------------------------------------------------------
+    // Environment variables shared across all stages
+    // -----------------------------------------------------------------------
+    environment {
+        VENV_DIR    = '.venv'
+        CONFIG_FILE = 'backtest_config.yaml'   // relative to configs/
+    }
+
+    // -----------------------------------------------------------------------
+    // Pipeline options
+    // -----------------------------------------------------------------------
+    options {
+        timestamps()                          // prefix every log line with time
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
     stages {
-        stage('Test Connection') {
+
+        // -------------------------------------------------------------------
+        stage('Checkout') {
+        // -------------------------------------------------------------------
             steps {
-                echo 'Jenkins is successfully connected to Bitbucket!'
+                checkout scm
+                echo "Branch: ${env.BRANCH_NAME ?: 'unknown'} | Build: ${env.BUILD_NUMBER}"
             }
         }
-        stage('Test Connection') {
+
+        // -------------------------------------------------------------------
+        stage('Setup Python Environment') {
+        // -------------------------------------------------------------------
             steps {
-                echo 'Jenkins is successfully connected to Bitbucket!'
+                sh '''
+                    python3 -m venv ${VENV_DIR}
+                    . ${VENV_DIR}/bin/activate
+                    pip install --upgrade pip --quiet
+                    pip install -e ".[dev]" --quiet
+                '''
             }
+        }
+
+        // -------------------------------------------------------------------
+        stage('Lint') {
+        // -------------------------------------------------------------------
+            steps {
+                sh '''
+                    . ${VENV_DIR}/bin/activate
+                    ruff check src/ scripts/ --output-format=text || true
+                '''
+            }
+        }
+
+        // -------------------------------------------------------------------
+        stage('Unit Tests') {
+        // -------------------------------------------------------------------
+            steps {
+                sh '''
+                    . ${VENV_DIR}/bin/activate
+                    pytest tests/ -v --tb=short --junitxml=test_results.xml || true
+                '''
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'test_results.xml'
+                }
+            }
+        }
+
+        // -------------------------------------------------------------------
+        stage('Run Backtest') {
+        // -------------------------------------------------------------------
+            steps {
+                sh '''
+                    . ${VENV_DIR}/bin/activate
+                    python scripts/run_backtest.py --config ${CONFIG_FILE}
+                '''
+            }
+        }
+
+        // -------------------------------------------------------------------
+        stage('Generate Performance Report') {
+        // -------------------------------------------------------------------
+            steps {
+                sh '''
+                    . ${VENV_DIR}/bin/activate
+                    python scripts/generate_metrics_report.py
+                '''
+            }
+        }
+
+        // -------------------------------------------------------------------
+        stage('Publish Results') {
+        // -------------------------------------------------------------------
+            steps {
+                // Archive raw CSVs and JSON metrics so they are downloadable
+                archiveArtifacts artifacts: 'results/**/*.csv, results/**/*.json',
+                                 allowEmptyArchive: true,
+                                 fingerprint: true
+
+                // Render the HTML report as a Jenkins build page
+                publishHTML(target: [
+                    allowMissing:         false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll:              true,
+                    reportDir:            'results/reports',
+                    reportFiles:          'performance_report.html',
+                    reportName:           'Backtest Performance Report'
+                ])
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Post-build actions
+    // -----------------------------------------------------------------------
+    post {
+        success {
+            echo "Backtest pipeline completed successfully - build #${env.BUILD_NUMBER}"
+        }
+        failure {
+            echo "Backtest pipeline FAILED on build #${env.BUILD_NUMBER}. Check stage logs above."
+        }
+        always {
+            echo "Pipeline finished."
         }
     }
 }

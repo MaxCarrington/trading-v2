@@ -22,4 +22,17 @@ def load_config(config_file):
         error("YAML parse error in {}: {}".format(path, e), __file__)
         raise e
 
+def get_config_file_default():
+    info(f"Current file is {__file__}")
+    path = constants.CONFIG_DEFAULT
+    try:
+        with open(path, "r") as f:
+            info("Loaded config from {}".format(path))
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        error("Config file not found: {}. Using defaults.".format(path), __file__)
+        raise FileNotFoundError
+    except yaml.YAMLError as e:
+        error("YAML parse error in {}: {}".format(path, e), __file__)
+        raise e
 
