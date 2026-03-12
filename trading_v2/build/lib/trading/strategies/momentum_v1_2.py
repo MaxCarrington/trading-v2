@@ -41,7 +41,7 @@ def momentum_strategy_v1_2(
 
     # Initialise store if needed
     if store is None:
-        store = initialise_store(series, params["ma_lookback"])
+        store = initialise_store(series, params["momentum_lookback"])
 
     # Update store with the *previous* bar per series
     store = update_store(store, new_row_list, series)
