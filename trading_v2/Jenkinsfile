@@ -1,130 +1,95 @@
+// Jenkinsfile
+// -----------
+// Triggered on every push to Bitbucket.
+// For each strategy config found, runs the backtest, saves results to SQLite,
+// and publishes an HTML report viewable inside Jenkins.
+//
+// REQUIREMENTS in Jenkins:
+//   - "HTML Publisher" plugin  (Manage Jenkins → Plugins)
+//   - A Python 3 virtualenv or system Python with your dependencies installed
+//   - BACKTEST_DB env var (optional) — defaults to backtest_results.db in workspace
+
 pipeline {
+
     agent any
 
     environment {
-        VENV_DIR    = '.venv'
-        CONFIG_FILE = 'backtest_config.yaml'
-        // Subdirectory within the repo where the project lives
-        PROJECT_DIR = 'trading_v2'
-    }
+        // Path to the SQLite database file — persisted across builds via a fixed path.
+        // Change this to an absolute path outside the workspace if you want it to survive
+        // a workspace wipe (e.g. /var/jenkins_home/backtest_results.db).
+        BACKTEST_DB = "${WORKSPACE}/backtest_results.db"
 
-    options {
-        timestamps()
-        buildDiscarder(logRotator(numToKeepStr: '20'))
+        // Folder where strategy config files live (relative to repo root)
+        CONFIGS_DIR = "configs"
+
+        // Direct path to the conda environment's Python binary
+        PYTHON = "/opt/homebrew/Caskroom/miniconda/base/envs/trading-env/bin/python"
     }
 
     stages {
 
-        // -------------------------------------------------------------------
-        stage('Checkout') {
-        // -------------------------------------------------------------------
+        stage('Setup') {
             steps {
-                checkout scm
-                echo "Branch: ${env.BRANCH_NAME ?: 'unknown'} | Build: ${env.BUILD_NUMBER}"
+                echo "Verifying Python environment..."
+                sh "${PYTHON} --version"
             }
         }
 
-        // -------------------------------------------------------------------
-        stage('Setup Python Environment') {
-        // -------------------------------------------------------------------
+        stage('Run Backtests') {
             steps {
-                dir("${PROJECT_DIR}") {
-                    sh '''
-                        python3 -m venv ${VENV_DIR}
-                        . ${VENV_DIR}/bin/activate
-                        pip install --upgrade pip --quiet
-                        pip install -e ".[dev]" --quiet
-                    '''
+                script {
+                    // Find every *.json config file in the configs directory
+                    def configs = sh(
+                        script: "find ${CONFIGS_DIR} -name '*.json' | sort",
+                        returnStdout: true
+                    ).trim().split('\n')
+
+                    if (configs == ['']) {
+                        error("No config files found in ${CONFIGS_DIR}/")
+                    }
+
+                    for (config in configs) {
+                        def metricsFile = config.replace('.json', '_metrics.json')
+                        echo "▶ Running backtest for: ${config}"
+
+                        // 1. Run the backtest — your script must write metrics to metricsFile
+                        sh "${PYTHON} run_backtest.py --config ${config}"
+
+                        // 2. Save results to SQLite
+                        sh "${PYTHON} save_results.py --config ${config} --metrics-file ${metricsFile}"
+                    }
                 }
             }
         }
 
-        // -------------------------------------------------------------------
-        stage('Lint') {
-        // -------------------------------------------------------------------
+        stage('Generate Report') {
             steps {
-                dir("${PROJECT_DIR}") {
-                    sh '''
-                        . ${VENV_DIR}/bin/activate
-                        ruff check src/ scripts/ --output-format=text || true
-                    '''
-                }
+                echo "Generating HTML report..."
+                sh "${PYTHON} generate_report.py --output reports/report.html --last 20"
             }
         }
 
-        // -------------------------------------------------------------------
-        stage('Unit Tests') {
-        // -------------------------------------------------------------------
+        stage('Publish Report') {
             steps {
-                dir("${PROJECT_DIR}") {
-                    sh '''
-                        . ${VENV_DIR}/bin/activate
-                        pytest tests/ -v --tb=short --junitxml=test_results.xml || true
-                    '''
-                }
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: "${PROJECT_DIR}/test_results.xml"
-                }
-            }
-        }
-
-        // -------------------------------------------------------------------
-        stage('Run Backtest') {
-        // -------------------------------------------------------------------
-            steps {
-                dir("${PROJECT_DIR}") {
-                    sh '''
-                        . ${VENV_DIR}/bin/activate
-                        python scripts/run_backtest.py --config ${CONFIG_FILE}
-                    '''
-                }
-            }
-        }
-
-        // -------------------------------------------------------------------
-        stage('Generate Performance Report') {
-        // -------------------------------------------------------------------
-            steps {
-                dir("${PROJECT_DIR}") {
-                    sh '''
-                        . ${VENV_DIR}/bin/activate
-                        python scripts/generate_metrics_report.py
-                    '''
-                }
-            }
-        }
-
-        // -------------------------------------------------------------------
-        stage('Publish Results') {
-        // -------------------------------------------------------------------
-            steps {
-                archiveArtifacts artifacts: "${PROJECT_DIR}/results/**/*.csv, ${PROJECT_DIR}/results/**/*.json",
-                                 allowEmptyArchive: true,
-                                 fingerprint: true
-
                 publishHTML(target: [
-                    allowMissing:          false,
+                    allowMissing:         false,
                     alwaysLinkToLastBuild: true,
-                    keepAll:               true,
-                    reportDir:             "${PROJECT_DIR}/results/reports",
-                    reportFiles:           'performance_report.html',
-                    reportName:            'Backtest Performance Report'
+                    keepAll:              true,
+                    reportDir:            'reports',
+                    reportFiles:          'report.html',
+                    reportName:           'Backtest Report',
+                    reportTitles:         'Backtest Results'
                 ])
             }
         }
     }
 
     post {
-        success {
-            echo "Backtest pipeline completed successfully - build #${env.BUILD_NUMBER}"
+        always {
+            echo "Pipeline complete. View the Backtest Report tab for results."
         }
         failure {
-            echo "Backtest pipeline FAILED on build #${env.BUILD_NUMBER}. Check stage logs above."
-        }
-        always {
-            echo "Pipeline finished."
+            echo "Pipeline FAILED — check console output above for errors."
         }
     }
 }
