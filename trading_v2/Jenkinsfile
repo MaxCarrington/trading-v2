@@ -34,6 +34,7 @@ pipeline {
                 sh "${PYTHON} --version"
                 sh "pwd"
                 sh "ls -la"
+                sh "ls -la trading_v2/"
             }
         }
 
