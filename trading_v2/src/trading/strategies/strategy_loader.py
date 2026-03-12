@@ -33,6 +33,7 @@ def get_params(config: dict):
             "date": date,
             "year": year,
             # pull parameters directly from config if present, else defaults
+            "momentum_lookback": config.get("parameters", {}).get("rsi_lookback", {pair: 12 for pair in pairs}),
             "rsi_lookback": config.get("parameters", {}).get("rsi_lookback", {pair: 12 for pair in pairs}),
             "ma_lookback": config.get("parameters", {}).get("ma_lookback", {pair: 9 for pair in pairs}),
             "ma_thresh": config.get("parameters", {}).get("ma_thresh", {pair: 0.66 for pair in pairs}),
