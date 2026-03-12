@@ -32,6 +32,8 @@ pipeline {
             steps {
                 echo "Verifying Python environment..."
                 sh "${PYTHON} --version"
+                sh "pwd"
+                sh "ls -la"
             }
         }
 
