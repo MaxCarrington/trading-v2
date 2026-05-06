@@ -3,11 +3,16 @@ import pandas as pd
 import oandapyV20.endpoints.instruments as instruments
 
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 from oandapyV20 import API
 from trading.utils.paths import get_forex_dir, get_time_frames, get_pairs
 
-# Initialize API client
-client = API(access_token='REDACTED', environment='practice')
+load_dotenv()
+
+client = API(
+    access_token=os.environ["OANDA_API_TOKEN"],
+    environment=os.environ.get("OANDA_ENVIRONMENT", "practice"),
+)
 
 def _fmt_utc(dt):
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
