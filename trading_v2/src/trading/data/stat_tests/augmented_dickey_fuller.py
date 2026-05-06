@@ -1,4 +1,4 @@
-from src.trading.utils.data_manipulation import to_log_returns
+from trading.utils.data_manipulation import to_log_returns
 # Performs an Augmented Dickey fuller test
 # Determines if a time series is stationary by testing for a unit root (a null
 # hypothesis). If there is a unit root, then the time series may be

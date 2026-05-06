@@ -1,16 +1,16 @@
 import numpy as np
 import pandas as pd
 from collections import Counter
-from src.trading.indicators.average_true_range import calculate_rolling_atr
-from src.trading.utils.data_manipulation import zscore_standardisation
-from src.trading.utils.logger import start_log, info, warning, error
+from trading.indicators.average_true_range import calculate_rolling_atr
+from trading.utils.data_manipulation import zscore_standardisation
+from trading.utils.logger import start_log, info, warning, error
 
 # Function uses Average True Range, Standard Deviation
 # to determine the volatility over a given period
-def get_volatility_statistics(series, lookback, asset, time_frame, start_date, end_date, price_to_use, print_output=False):
-    std_dev = stddev_rolling_window(series, lookback, price_to_use)
+def get_volatility_statistics(series, lookback, asset, time_frame, start_date, end_date , print_output=False):
+    std_dev = stddev_rolling_window(series, lookback)
     # Standardise ATR, and StdDev
-    standardised_atrs = zscore_standardisation(calculate_rolling_atr(series, price_to_use, lookback))
+    standardised_atrs = zscore_standardisation(calculate_rolling_atr(series, lookback))
     standardised_std_dev = zscore_standardisation(std_dev)
 
     # Combine indicators into one composite measure
@@ -144,8 +144,8 @@ def std_atr_stddev(standardised_atrs, standardised_stddev):
 
 # Standard deviation of log returns over a rolling window (lookback)
 # series is expected to be a DataFrame with a 'Close' column (like R's xts)
-def stddev_rolling_window(series, lookback, price_to_use):
-    close = pd.Series(series[f"{price_to_use}Close"])
+def stddev_rolling_window(series, lookback):
+    close = pd.Series(series["Close"])
     close_safe = close.where(close > 0, np.nan)
     returns = np.log(close_safe).diff(1)
     rolling_stddev = returns.rolling(window=lookback).std()

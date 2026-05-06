@@ -1,7 +1,7 @@
 import pandas as pd
 from ta.volatility import BollingerBands
-from src.trading.risk_management.trade_record_management import TradeRecords
-from src.trading.data.data_analysis.mean_rev_analysis import get_series_mean_rev_stats
+from trading.risk_management.trade_record_management import TradeRecords
+from trading.data.data_analysis.mean_rev_analysis import get_series_mean_rev_stats
 
 def units_from_capital(price, balance, frac=0.02, lot=1):
     if price <= 0 or balance <= 0 or frac <= 0: return 0

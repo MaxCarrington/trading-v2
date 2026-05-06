@@ -13,14 +13,14 @@
 # is below the previous close, signaling sustained downward momentum. Volatility is monitored to filter entries.
 import pandas as pd
 
-from src.trading.data.data_analysis.momentum_analysis import get_momentum_statistics, get_momentum_direction
-from src.trading.data.data_analysis.analysis import is_momentum
-from src.trading.data.data_analysis.volatility_analysis import get_volatility_statistics
-from src.trading.risk_management.trade_record_management import TradeRecords
-from src.trading.risk_management.stop_losses import fixed_stop_loss
-from src.trading.risk_management.take_profit import fixed_take_profit
-from src.trading.indicators.moving_averages import calculate_moving_average
-from src.trading.indicators.relative_strength_index import calculate_rsi, is_rsi_overbought, is_rsi_oversold
+from trading.data.data_analysis.momentum_analysis import get_momentum_statistics, get_momentum_direction
+from trading.data.data_analysis.analysis import is_momentum
+from trading.data.data_analysis.volatility_analysis import get_volatility_statistics
+from trading.risk_management.trade_record_management import TradeRecords
+from trading.risk_management.stop_losses import fixed_stop_loss
+from trading.risk_management.take_profit import fixed_take_profit
+from trading.indicators.moving_averages import calculate_moving_average
+from trading.indicators.relative_strength_index import calculate_rsi, is_rsi_overbought, is_rsi_oversold
 
 def momentum_strategy_v1_2(
     store,
@@ -191,10 +191,10 @@ def momentum_strategy_v1_2(
 
 def analyse_momentum(store, symbol, params, timeframe, start_date, end_date=None, trade_high_volatility=True, trade_w_volatility=True, momentum_threshold=70, high_volatility_thresh = 70, low_volatility_thresh = 30):
     df = store["ohlcv"][symbol]
-    momentum_stats = get_momentum_statistics(df, params['momentum_len_thresh'][symbol], symbol, timeframe,start_date, end_date, price_to_use="Mid")
+    momentum_stats = get_momentum_statistics(df, params['momentum_len_thresh'][symbol], symbol, timeframe,start_date, end_date)
     store["momentum_score"][symbol] = momentum_stats["normalised_score"]
 
-    volatility_stats = get_volatility_statistics(df, params["lookback"][symbol], symbol, timeframe, start_date, end_date, price_to_use="Mid")
+    volatility_stats = get_volatility_statistics(df, params["lookback"][symbol], symbol, timeframe, start_date, end_date)
 
     momentum_found, normalised_score = is_momentum(momentum_stats, volatility_stats, momentum_threshold, trade_high_volatility=trade_high_volatility, trade_w_volatility=trade_w_volatility)
 

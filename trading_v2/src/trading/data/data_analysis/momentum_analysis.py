@@ -1,14 +1,14 @@
 import numpy as np
 from scipy.stats import pearsonr
 
-from src.trading.data.stat_tests.augmented_dickey_fuller import perform_adf_test
-from src.trading.utils.data_manipulation import to_log_returns
-from src.trading.data.stat_tests.hurst_exponent import calculate_hurst_exponent
-from src.trading.utils.logger import start_log, info, warning, error
+from trading.data.stat_tests.augmented_dickey_fuller import perform_adf_test
+from trading.utils.data_manipulation import to_log_returns
+from trading.data.stat_tests.hurst_exponent import calculate_hurst_exponent
+from trading.utils.logger import start_log, info, warning, error
 
 # Get the momentum statistical information from analysis
-def get_momentum_statistics(series, p_val_len_thresh, asset, time_frame, start_date, end_date, price_to_use, print_output=False):
-    log_returns = to_log_returns(series[f"{price_to_use}Close"].dropna().tail(75))
+def get_momentum_statistics(series, p_val_len_thresh, asset, time_frame, start_date, end_date, print_output=False):
+    log_returns = to_log_returns(series["Close"].dropna().tail(75))
     # find the optimal lookback window with strongest correlation signal
     rolling_correlations = calc_optimal_window_size(log_returns)
     # Use only optimal correlations for regime classification

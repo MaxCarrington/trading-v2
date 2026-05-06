@@ -4,7 +4,7 @@ import oandapyV20.endpoints.instruments as instruments
 
 from datetime import datetime, timedelta
 from oandapyV20 import API
-from src.trading.utils.paths import get_forex_dir, get_time_frames, get_pairs
+from trading.utils.paths import get_forex_dir, get_time_frames, get_pairs
 
 # Initialize API client
 client = API(access_token='REDACTED', environment='practice')

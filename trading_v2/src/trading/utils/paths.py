@@ -1,6 +1,6 @@
 import os 
 import pandas as pd
-import src.trading.utils.constants as constants
+import trading.utils.constants as constants
 
 # Get the number of periods for a given time frame
 def get_num_time_frame_periods(time_frame):

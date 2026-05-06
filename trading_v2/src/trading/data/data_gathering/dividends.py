@@ -3,9 +3,9 @@ import os
 import requests
 import json
 
-from src.trading.utils.paths import get_dividends_api_key, get_data_dir
-from src.trading.utils.paths import get_dividend_file
-import src.trading.utils.constants as constants
+from trading.utils.paths import get_dividends_api_key, get_data_dir
+from trading.utils.paths import get_dividend_file
+import trading.utils.constants as constants
 
 # Dynamically add the project root to PYTHONPATH
 sys.path.append(constants.PROJECT_ROOT)

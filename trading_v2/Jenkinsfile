@@ -27,13 +27,6 @@ pipeline {
 
         // Direct path to the conda environment's Python binary
         PYTHON = "/opt/homebrew/Caskroom/miniconda/base/envs/trading-env/bin/python"
-
-        // TRADING_DATA_DIR is intentionally NOT set here — the path contains
-        // special characters (spaces, apostrophe) that break shell quoting.
-        // Set it once in the Jenkins UI instead:
-        //   Manage Jenkins → System → Global properties → Environment variables
-        //   Name:  TRADING_DATA_DIR
-        //   Value: /Users/maxcarrington/Library/Mobile Documents/com~apple~CloudDocs/Repo's/trading_v2/data
     }
 
     stages {
@@ -42,8 +35,8 @@ pipeline {
             steps {
                 echo "Verifying Python environment..."
                 sh "${PYTHON} --version"
-                sh "${PYTHON} -c \"import os; v = os.environ.get('TRADING_DATA_DIR', 'NOT SET'); print('TRADING_DATA_DIR:', v)\""
-                sh "cd ${PROJECT_DIR} && PYTHONPATH=. ${PYTHON} -c \"import src.trading.utils.constants as c; print('constants.DATA_DIR:', c.DATA_DIR)\""
+                sh "pwd"
+                sh "ls -la ${PROJECT_DIR}/"
             }
         }
 
@@ -61,17 +54,14 @@ pipeline {
                     }
 
                     configs.split('\n').each { config ->
-                        def configName  = config.replace('trading_v2/configs/', '')
                         def metricsFile = config.replace('.yaml', '_metrics.json')
-                        echo "Running backtest for: ${configName}"
+                        echo "Running backtest for: ${config}"
 
-                        // cd into trading_v2/ and set PYTHONPATH=. so 'src.trading' is importable
-                        // (mirrors what PyCharm does automatically as the project root)
                         // 1. Run the backtest — saves trade records CSV to results/
-                        sh "cd ${PROJECT_DIR} && PYTHONPATH=. ${PYTHON} scripts/run_backtest.py --config ${configName}"
+                        sh "${PYTHON} ${PROJECT_DIR}/scripts/run_backtest.py --config ${config.replace('trading_v2/configs/', '')}"
 
                         // 2. Compute metrics and persist to SQLite
-                        sh "cd ${PROJECT_DIR} && PYTHONPATH=. ${PYTHON} scripts/save_results.py --config configs/${configName} --metrics-file ${metricsFile} --db ${BACKTEST_DB} --build ${env.BUILD_NUMBER}"
+                        sh "${PYTHON} ${PROJECT_DIR}/scripts/save_results.py --config ${config} --metrics-file ${metricsFile} --db ${BACKTEST_DB} --build ${env.BUILD_NUMBER}"
                     }
                 }
             }
@@ -80,7 +70,7 @@ pipeline {
         stage('Generate Report') {
             steps {
                 echo "Generating HTML report..."
-                sh "cd ${PROJECT_DIR} && PYTHONPATH=. ${PYTHON} scripts/generate_report.py --output reports/report.html --last 20 --db ${BACKTEST_DB}"
+                sh "${PYTHON} ${PROJECT_DIR}/scripts/generate_report.py --output ${PROJECT_DIR}/reports/report.html --last 20 --db ${BACKTEST_DB}"
             }
         }
 
@@ -108,3 +98,4 @@ pipeline {
         }
     }
 }
+ 

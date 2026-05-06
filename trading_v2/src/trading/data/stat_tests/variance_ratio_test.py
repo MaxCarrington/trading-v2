@@ -1,6 +1,6 @@
 import pandas as pd
 from arch.unitroot import VarianceRatio
-from src.trading.utils.data_manipulation import to_log_returns
+from trading.utils.data_manipulation import to_log_returns
 # Performs a Variance Ratio Test
 # Used to test the random walk hypothesis in a time series. The null hypothesis
 # is that the series is a random walk (in this case, the variance ratio will be

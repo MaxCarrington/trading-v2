@@ -1,10 +1,13 @@
-import re 
+import os
+import re
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from datetime import date, timedelta
-from src.trading.utils.logger import error, info, warning
-from src.trading.utils.paths import get_forex_dir
+from datetime import date, timedelta, datetime
+
+from trading.utils import constants
+from trading.utils.logger import error, info, warning
+from trading.utils.paths import get_forex_dir
 # Converts a csv file to a data frame, localising the time zone
 def from_csv_to_df(file_name, keep_time_zone=False):
     df = pd.read_csv(
@@ -60,6 +63,28 @@ def load_mid_ohlcv(path: str) -> pd.DataFrame:
             df["Spread"] = np.nan  # or a fixed value if you want a default
 
     return df.set_index("Time")
+
+def load_mid_ohlcv_range(pair, year, timeframe, start_mmdd, end_mmdd):
+    """Load and stitch daily mid-OHLCV CSVs across a date range."""
+    start = datetime.strptime(f"{year}-{start_mmdd}", "%Y-%m-%d")
+    end   = datetime.strptime(f"{year}-{end_mmdd}",   "%Y-%m-%d")
+
+    base = os.path.join(constants.OANDA_FOREX_DATA_DIR, pair, str(year), timeframe)
+
+    frames = []
+    current = start
+    while current <= end:
+        date_str = current.strftime("%m-%d")
+        path = os.path.join(base, date_str, f"{pair}.csv")
+        if os.path.isfile(path):                    # silently skip missing days (weekends/holidays)
+            frames.append(load_mid_ohlcv(path))     # ← reuses the renamer
+        current += timedelta(days=1)
+
+    if not frames:
+        raise FileNotFoundError(f"No daily CSVs found for {pair} between {start_mmdd} and {end_mmdd} in {year}")
+
+    combined = pd.concat(frames).sort_index()
+    return combined
 
 # Validate if a value matches a given regex pattern
 def is_valid_regex(value, regex):

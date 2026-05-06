@@ -5,20 +5,20 @@ import warnings
 from ta.trend import ema_indicator
 from scipy.stats import pearsonr
 
-from src.trading.utils.data_manipulation import zscore_standardisation
-from src.trading.utils.logger import start_log, info, warning, error
+from trading.utils.data_manipulation import zscore_standardisation
+from trading.utils.logger import start_log, info, warning, error
 
 warnings.filterwarnings("ignore", category=RuntimeWarning, message="Degrees of freedom <= 0 for slice")
 
 # Analyses periods of high trading volume and liquidity
-def combined_liquidity_analysis(series, asset, time_frame, start_date, end_date, price_to_use, vol_lookback=20, liquidity_thresh=0.6, window_size=10, print_output=False):
+def combined_liquidity_analysis(series, asset, time_frame, start_date, end_date, vol_lookback=20, liquidity_thresh=0.6, window_size=10, print_output=False):
     info(f"Current file is {__file__}")
     # Identify high volume periods
     high_volume_periods = high_liquidity_periods(series, vol_lookback, liquidity_thresh)
     # Filter the series to only those periods
     high_vol_series = series.loc[high_volume_periods]
     # Estimate liquidity indicators on the high volume subset
-    liquidity_indicators = estimate_liquidity(high_vol_series, price_to_use, window_size)
+    liquidity_indicators = estimate_liquidity(high_vol_series, window_size)
     # Select final periods where liquidity is high
     high_liquidity_flags = liquidity_indicators['high_liquidity']
     if isinstance(high_liquidity_flags, pd.Series):
@@ -30,7 +30,7 @@ def combined_liquidity_analysis(series, asset, time_frame, start_date, end_date,
     vwap_at_liquidity = vwap_series.loc[final_selection]
     reliability_at_liquidity = liquidity_indicators['reliability'].loc[final_selection]
     # Generate scores and regime tags for each windowed period
-    scores = [score_period(series, i, window_size, price_to_use) for i in range(window_size, len(series))]
+    scores = [score_period(series, i, window_size) for i in range(window_size, len(series))]
     regimes = [tag_regime(s['liquidity'], s['momentum']) for s in scores]
     # Attach timestamps to scores
     score_df = pd.DataFrame(scores, index=series.index[window_size:])
@@ -59,10 +59,10 @@ def combined_liquidity_analysis(series, asset, time_frame, start_date, end_date,
     return liquidity_stats
 
 # Scores periods based on the liquidity and momentum
-def score_period(series, idx, window, price_to_use):
+def score_period(series, idx, window):
     sub = series.iloc[idx-window:idx]
-    liq = estimate_liquidity(sub, price_to_use, window)['high_liquidity'].iloc[-1]
-    mom = vol_inc_with_trend(sub, price_to_use, window)['correlation']
+    liq = estimate_liquidity(sub, window)['high_liquidity'].iloc[-1]
+    mom = vol_inc_with_trend(sub, window)['correlation']
     return {'liquidity': liq, 'momentum': mom}
 
 # Determines the regime, resulting in either 'Breakout', 'Liquidity', 'Momentum' or 'Neutral'
@@ -127,12 +127,12 @@ def score_spike(last_price, mean_revert_price, threshold, cor_score_value, no_co
         return no_cor_score_value
 
 # For momentum, analyze increasing volume trends alongside price increases
-def vol_inc_with_trend(series, price_to_use, window_size):
+def vol_inc_with_trend(series, window_size):
     # EMA of volume using ta
     ewma_vol = ema_indicator(close=series['Volume'], window=window_size)
 
     # Detect price increases and apply EMA using ta
-    price_increases = detect_price_increase(series[f'{price_to_use}Close'])
+    price_increases = detect_price_increase(series['Close'])
     ewma_price_inc = ema_indicator(close=price_increases, window=window_size)
 
     # Align lengths
@@ -163,7 +163,7 @@ def detect_price_increase(prices):
     return price_increases
 
 # Estimates liquidity within high volume periods using volatility and VWAP
-def estimate_liquidity(series, price_to_use, window_size=10):
+def estimate_liquidity(series, window_size=10):
     if len(series.dropna()) < window_size:
         return {
             'high_liquidity': pd.Series(index=series.index, data=np.nan),
@@ -171,8 +171,8 @@ def estimate_liquidity(series, price_to_use, window_size=10):
             'reliability': pd.Series(index=series.index, data=np.nan)
         }
 
-    volatility = (series[f'{price_to_use}High'] - series[f'{price_to_use}Low']) / series[f'{price_to_use}Low']
-    vwap = (series[f'{price_to_use}High'] + series[f'{price_to_use}Low'] + series[f'{price_to_use}Close']) / 3
+    volatility = (series['High'] - series['Low']) / series['Low']
+    vwap = (series['High'] + series['Low'] + series['Close']) / 3
 
     avg_volume = series['Volume'].rolling(window=window_size).mean()
     avg_volatility = volatility.rolling(window=window_size).mean()

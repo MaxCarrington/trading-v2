@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
-from src.trading.data.stat_tests.augmented_dickey_fuller import perform_adf_test
-from src.trading.data.stat_tests.hurst_exponent import calculate_hurst_exponent
-from src.trading.data.stat_tests.variance_ratio_test import perform_variance_ratio_test
-from src.trading.utils.logger import start_log, info, warning, error
+from trading.data.stat_tests.augmented_dickey_fuller import perform_adf_test
+from trading.data.stat_tests.hurst_exponent import calculate_hurst_exponent
+from trading.data.stat_tests.variance_ratio_test import perform_variance_ratio_test
+from trading.utils.logger import start_log, info, warning, error
 
 #  Calculates mean reversion statistics
 #   - Calculate the variance ratio for each time series
@@ -14,8 +14,8 @@ from src.trading.utils.logger import start_log, info, warning, error
 #   - Score each time series out of 100 based on above
 #   - If score is higher than the set amount, the time series will be used for
 #     mean reversion
-def get_series_mean_rev_stats(series, asset, time_frame, start_date, end_date, price_to_use, threshold=0.05, print_output=False):
-    close = series[f"{price_to_use}Close"]
+def get_series_mean_rev_stats(series, asset, time_frame, start_date, end_date, threshold=0.05, print_output=False):
+    close = series["Close"]
     score = 0
     consistency = 0
     # --- Run diagnostics ---

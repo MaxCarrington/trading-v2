@@ -2,10 +2,10 @@ import pandas as pd
 import os
 from datetime import datetime
 
-from src.trading.risk_management import take_profit
-from src.trading.risk_management.position_sizing import initialise_kelly
-from src.trading.risk_management.take_profit import fixed_take_profit
-from src.trading.risk_management.stop_losses import fixed_stop_loss
+from trading.risk_management import take_profit
+from trading.risk_management.position_sizing import initialise_kelly
+from trading.risk_management.take_profit import fixed_take_profit
+from trading.risk_management.stop_losses import fixed_stop_loss
 
 class TradeRecords:
     def __init__(self):

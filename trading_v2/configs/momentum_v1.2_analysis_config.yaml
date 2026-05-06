@@ -1,4 +1,7 @@
 strategy: "momentum_v1.2"
+provider: "OANDA"
+security_type: "forex"
+
 volatility_lookback: 12
 momentum_lookback: 12
 holding_period: 34

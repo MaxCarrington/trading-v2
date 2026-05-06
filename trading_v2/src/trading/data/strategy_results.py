@@ -4,8 +4,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-import src.trading.utils.constants as constants
-from src.trading.utils.config import get_initial_capital
+import trading.utils.constants as constants
+from trading.utils.config import get_initial_capital
 
 # Calculates the maximum drawdown from a cumulative PnL series.
 def max_drawdown(cumPnL):

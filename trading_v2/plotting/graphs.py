@@ -4,10 +4,10 @@ import pandas as pd
 import mplfinance as mpf
 
 import matplotlib.pyplot as plt
-import src.trading.utils.constants as constants
-from src.trading.indicators.average_true_range import calculate_rolling_atr
-from src.trading.data.data_analysis.volatility_analysis import classify_volatility
-from src.trading.utils.logger import start_log, info, warning, error
+import trading.utils.constants as constants
+from trading.indicators.average_true_range import calculate_rolling_atr
+from trading.data.data_analysis.volatility_analysis import classify_volatility
+from trading.utils.logger import start_log, info, warning, error
 
 _REGIME_COLORS = {
     "Low": "green",

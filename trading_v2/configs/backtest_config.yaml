@@ -3,6 +3,8 @@
 
 strategy: "momentum_v1.2"
 
+provider: "OANDA"
+security_type: "forex"
 symbols:
   - "AUD_USD"
 

@@ -1,4 +1,4 @@
-from src.trading.strategies.momentum_v1_2 import momentum_strategy_v1_2
+from trading.strategies.momentum_v1_2 import momentum_strategy_v1_2
 
 
 def get_strategy(strategy_name: str):
@@ -23,13 +23,16 @@ def get_params(config: dict):
     start_date = config.get("start_date")
     end_date = config.get("end_date")
     year = config.get("year")
-
+    provider = config.get("provider")
+    security_type = config.get("security_type")
     if isinstance(pairs, str):
         pairs = [pairs]
 
     if strategy_name == 'momentum_v1.2':
         return {
             "strategy_name": strategy_name,
+            "provider": provider,
+            "security_type": security_type,
             "pairs": pairs,
             "timeframe": timeframe,
             "start_date": start_date,

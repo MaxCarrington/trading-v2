@@ -16,10 +16,10 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from src.trading.utils.constants import YEAR_REGEX, YEAR_TIME_RANGE_REGEX, TIME_FRAMES, TICKERS, PAIRS
+from trading.utils.constants import YEAR_REGEX, YEAR_TIME_RANGE_REGEX, TIME_FRAMES, TICKERS, PAIRS
 
-from src.trading.utils.general_utils import is_valid_regex
-from src.trading.utils.logger import info, warning, error  # << ADD THIS
+from trading.utils.general_utils import is_valid_regex
+from trading.utils.logger import info, warning, error  # << ADD THIS
 #--------------------------------------------------------------------------------
 
 
@@ -109,7 +109,7 @@ def start():
             error("For intraday stocks, use --period YYYY-MM-DD,YYYY-MM-DD.")
             sys.exit(1)
 
-        from src.trading.data.data_gathering import download_stocks, download_years
+        from trading.data.data_gathering import download_stocks, download_years
 
         if isinstance(yr_or_rng, tuple):
             download_stocks(tickers, yr_or_rng[0], yr_or_rng[1], time_frames)
@@ -131,7 +131,7 @@ def start():
         start_date, end_date = yr_or_rng
         selected_frames = {tf: TIME_FRAMES[tf] for tf in time_frames}
 
-        from src.trading.data.data_gathering.OANDA import get_data_from_period
+        from trading.data.data_gathering.OANDA import get_data_from_period
         get_data_from_period(start_date, end_date, time_frames=selected_frames, pairs=tickers)
 
 

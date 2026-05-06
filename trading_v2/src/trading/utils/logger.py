@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from typing import Optional, Dict
 import colorlog
-from src.trading.utils.paths import get_logs_dir
+from trading.utils.paths import get_logs_dir
 
 
 # Ensure logs directory exists

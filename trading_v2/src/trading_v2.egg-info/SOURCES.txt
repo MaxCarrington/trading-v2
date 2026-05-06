@@ -29,6 +29,7 @@ src/trading/risk_management/trade_record_management.py
 src/trading/risk_management/turn_on_off_strategies.py
 src/trading/strategies/mean_reversion.py
 src/trading/strategies/momentum_v1_2.py
+src/trading/strategies/momentum_v1_3.py
 src/trading/strategies/strategy_loader.py
 src/trading/utils/__init__.py
 src/trading/utils/config.py
@@ -44,3 +45,4 @@ src/trading_v2.egg-info/dependency_links.txt
 src/trading_v2.egg-info/requires.txt
 src/trading_v2.egg-info/top_level.txt
 tests/test.py
+tests/tests2.py

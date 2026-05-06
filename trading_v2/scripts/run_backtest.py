@@ -2,11 +2,11 @@ import sys, os
 import pandas as pd
 from datetime import datetime
 import math
-import src.trading.utils.constants as constants
-from src.trading.utils.config import load_config
-from src.trading.strategies.strategy_loader import get_strategy, get_params
-from src.trading.utils.general_utils import load_mid_ohlcv
-from src.trading.utils.logger import start_log, info, warning, error
+import trading.utils.constants as constants
+from trading.utils.config import load_config
+from trading.strategies.strategy_loader import get_strategy, get_params
+from trading.utils.general_utils import load_mid_ohlcv, load_mid_ohlcv_range
+from trading.utils.logger import start_log, info, warning, error
 from trading.utils.data_manipulation import get_forex_data, create_asset_dictonary
 
 #--------------------------------------------------------------------------------
@@ -307,10 +307,31 @@ def run_backtest(strategy, params):
     # Load one or more aligned DataFrames with columns: Open, High, Low, Close
     # Example: using your merged yearly file (adjust the path as needed)
     for pair in params["pairs"]:
-        year=params["year"]
-        date=params["date"]
-        data_csv = os.path.join(constants.OANDA_FOREX_DATA_DIR, f"{pair}", f"{year}", f"{params['timeframe']}", "merged", f"{pair}_{date}.csv")
-        series = load_mid_ohlcv(data_csv)
+        year = params["year"]
+        timeframe = params["timeframe"]
+        start_date = params["start_date"]
+        end_date = params["end_date"]
+        base_dir = "" # Placeholder, needs to be updated when more security types are used
+        if params["security_type"] == "forex" and params["provider"] == "OANDA":
+            base_dir = os.path.join(
+                constants.OANDA_FOREX_DATA_DIR, pair, year, timeframe
+            )
+            if start_date == year and end_date == year:
+                # Full year → use the pre-merged file
+                data_csv = os.path.join(base_dir, "merged", f"{pair}_{year}.csv")
+                series = load_mid_ohlcv(data_csv)
+
+            elif start_date == end_date:
+                # Single day → one chunk file (MM-DD subfolder)
+                data_csv = os.path.join(base_dir, start_date, f"{pair}.csv")
+                series = load_mid_ohlcv(data_csv)
+
+            else:
+                # Date range → stitch the daily chunks between start and end
+                series = load_mid_ohlcv_range(pair, year, timeframe, start_date, end_date)
+        else:
+            sys.exit("INCORRECT DATA FORMAT. THE CODE FOR NON OANDA / FOREX DATA HAS NOT BEEN IMPLEMENTED YET. \n"
+                     "See run_backtest.py line 334 for more information.")
 
         # Ensure backtester receives a list of DataFrames (even if only one)
         if params["timeframe"] in ["D", "H4", "H1"]:
@@ -353,3 +374,5 @@ if __name__ == "__main__":
     strategy = get_strategy(config["strategy"])
     params = get_params(config)
     run_backtest(strategy, params)
+
+
