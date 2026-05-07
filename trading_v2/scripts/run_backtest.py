@@ -8,13 +8,12 @@ from trading.strategies.strategy_loader import get_strategy, get_params
 from trading.utils.general_utils import load_mid_ohlcv, load_mid_ohlcv_range
 from trading.utils.logger import start_log, info, warning, error
 from trading.utils.data_manipulation import get_forex_data, create_asset_dictonary
-
 #--------------------------------------------------------------------------------
 # Capture command-line arguments
 # Argument 0 is the script name
 # Argument 1 is --config
-# Argument 2 is the config file path (e.g. configs/backtest_config.yaml)
-# Run with: python scripts/run_backtest.py --config configs/backtest_config.yaml
+# Argument 2 is the config file path (e.g. configs/backtest_smoke.yaml)
+# Run with: python scripts/run_backtest.py --config configs/backtest_smoke.yaml
 #--------------------------------------------------------------------------------
 
 # Pick the provided path if present, otherwise use default
@@ -95,14 +94,11 @@ def find_pnl(prices, old_pos, market_order,
         'old_value': old_value
     }
 
-def get_initial_capital():
-    return 100
-
 # Backtester that simulates a live environment for multiple series
 def backtest_live(data_list, strategy_function, params, slippage_multiplier, strategy_name):
     num_periods = len(data_list[0])  # Assumes all series have same number of rows
-    num_series = len(data_list)
-    balance = get_initial_capital()
+    num_series = len(params['pairs'])
+    balance = params['starting_capital']
     current_pos = [0] * num_series  # One position per series
     # For each series, store a list of daily pnl values.
     pnl_lists = [[] for _ in range(num_series)]
@@ -133,7 +129,6 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
         limit_orders_2 = orders.get("limitOrders2", [0] * num_series)
         limit_prices_2 = orders.get("limitPrices2", [0] * num_series)
         store = orders["store"]
-
         check_lengths(num_series, orders)
         # 4) Now it’s safe to look at the next bar to settle PnL (simulate next open)
         prices_list = []
@@ -251,6 +246,7 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
             "results",
             "backtest_results",
             strategy_name,
+            datetime.now().strftime('%Y%m%d'),
             f"trade_records_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         )
 
@@ -303,76 +299,108 @@ def check_lengths(num_series, orders):
         if k in orders and len(orders[k]) != num_series:
             raise ValueError(f"len({k})={len(orders[k])} != num_series={num_series}")
 
-def run_backtest(strategy, params):
-    # Load one or more aligned DataFrames with columns: Open, High, Low, Close
-    # Example: using your merged yearly file (adjust the path as needed)
-    for pair in params["pairs"]:
-        year = params["year"]
-        timeframe = params["timeframe"]
-        start_date = params["start_date"]
-        end_date = params["end_date"]
-        base_dir = "" # Placeholder, needs to be updated when more security types are used
-        if params["security_type"] == "forex" and params["provider"] == "OANDA":
-            base_dir = os.path.join(
-                constants.OANDA_FOREX_DATA_DIR, pair, year, timeframe
-            )
-            if start_date == year and end_date == year:
-                # Full year → use the pre-merged file
-                data_csv = os.path.join(base_dir, "merged", f"{pair}_{year}.csv")
-                series = load_mid_ohlcv(data_csv)
+def _load_series_for_pair(pair, params):
+    """All your existing loading logic, lifted out unchanged."""
+    year       = params["year"]
+    timeframe  = params["timeframe"]
+    start_date = params["start_date"]
+    end_date   = params["end_date"]
 
-            elif start_date == end_date:
-                # Single day → one chunk file (MM-DD subfolder)
-                data_csv = os.path.join(base_dir, start_date, f"{pair}.csv")
-                series = load_mid_ohlcv(data_csv)
+    if params["security_type"] == "forex" and params["provider"] == "OANDA":
+        base_dir = os.path.join(constants.OANDA_FOREX_DATA_DIR, pair, year, timeframe)
 
-            else:
-                # Date range → stitch the daily chunks between start and end
-                series = load_mid_ohlcv_range(pair, year, timeframe, start_date, end_date)
+        if start_date == year and end_date == year:
+            series = load_mid_ohlcv(os.path.join(base_dir, "merged", f"{pair}_{year}.csv"))
+        elif start_date == end_date:
+            series = load_mid_ohlcv(os.path.join(base_dir, start_date, f"{pair}.csv"))
         else:
-            sys.exit("INCORRECT DATA FORMAT. THE CODE FOR NON OANDA / FOREX DATA HAS NOT BEEN IMPLEMENTED YET. \n"
-                     "See run_backtest.py line 334 for more information.")
-
-        # Ensure backtester receives a list of DataFrames (even if only one)
-        if params["timeframe"] in ["D", "H4", "H1"]:
-            # Use full year
-            data_list = [series]
-        elif params["timeframe"] in ["M30", "M15"]:
-            # Use 1–2 months
-            data_list = [series.loc["2025-01":"2025-02"]]
-        elif params["timeframe"] == "M5":
-            # Use 1 week
-            data_list = [series.loc["2025-01-01":"2025-01-07"]]
-        elif params["timeframe"] == "M1":
-            # Use 1 week (already heavy)
-            data_list = [series.loc["2025-01-01":"2025-01-02"]]
-        else:
-            raise Exception(f'Unknown timeframe: {params["timeframe"]}')
-
-        # Parameters (unused here) and slippage
-        slippage_multiplier = 0.2  # set to 0 for a clean sanity test
-        print(params)
-        results = backtest_live(
-            data_list=data_list,
-            strategy_function=strategy,
-            params=params,
-            slippage_multiplier=slippage_multiplier,
-            strategy_name=params["strategy_name"],
+            series = load_mid_ohlcv_range(pair, year, timeframe, start_date, end_date)
+    else:
+        raise NotImplementedError(
+            f"No loader for provider={params['provider']}, security_type={params['security_type']}"
         )
 
-        # Inspect output
-        pnl_df = results["pnlList"][0]
-        networth_vec = results["netWorthList"]
-        k_ratio = results["k"]
+    # Timeframe-specific slicing — kept exactly as-is
+    if timeframe in ["D", "H4", "H1"]:
+        return series
+    elif timeframe in ["M30", "M15"]:
+        return series.loc["2025-01":"2025-02"]
+    elif timeframe == "M5":
+        return series.loc["2025-01-01":"2025-01-07"]
+    elif timeframe == "M1":
+        return series.loc["2025-01-01":"2025-01-02"]
+    else:
+        raise ValueError(f"Unknown timeframe: {timeframe}")
 
-        print(pnl_df.tail())
-        print("Final Net Worth:", networth_vec[-1])
-        print("k (days in position %):", k_ratio)
+def _align_dataframes(dfs):
+    """
+    Inner-join all DataFrames on their time index so every series has
+    the same length and the same timestamps. Drops timestamps not
+    present in every series (e.g. one pair has a holiday candle the others don't).
+    """
+    if len(dfs) <= 1:
+        return dfs
 
+    common_index = dfs[0].index
+    for df in dfs[1:]:
+        common_index = common_index.intersection(df.index)
+
+    aligned = [df.loc[common_index].sort_index() for df in dfs]
+
+    # Sanity check
+    n = len(aligned[0])
+    for j, df in enumerate(aligned):
+        if len(df) != n:
+            raise RuntimeError(f"Alignment failed: series {j} has {len(df)} rows, expected {n}")
+
+    return aligned
+
+def run_backtest(strategy, params):
+    data_list = []
+    for pair in params["pairs"]:
+        series = _load_series_for_pair(pair, params)  # <-- your existing branching, extracted
+        data_list.append(series)
+    data_list = _align_dataframes(data_list)
+    # 2. BACKTEST once, on the whole list
+    slippage_multiplier = 0.2
+    results = backtest_live(
+        data_list=data_list,
+        strategy_function=strategy,
+        params=params,
+        slippage_multiplier=slippage_multiplier,
+        strategy_name=params["strategy_name"],
+    )
+
+    # 3. INSPECT
+    networth_vec = results["netWorthList"]
+    k_ratio = results["k"]
+    pnl_dfs = results["pnlList"]
+
+    print("\n" + "=" * 60)
+    print("PER-PAIR P&L")
+    print("=" * 60)
+    for pair, pnl_df in zip(params["pairs"], pnl_dfs):
+        final_cum = pnl_df["CumPnL"].iloc[-1]
+        n_winning = (pnl_df["DailyPnL"] > 0).sum()
+        n_losing = (pnl_df["DailyPnL"] < 0).sum()
+        print(f"\n{pair}:")
+        print(f"  Final CumPnL: {final_cum:.2f}")
+        print(f"  Winning days: {n_winning}, Losing days: {n_losing}")
+        print(f"  Last 5 rows:")
+        print(pnl_df.tail().to_string())
+
+    print("\n" + "=" * 60)
+    print("PORTFOLIO")
+    print("=" * 60)
+    print(f"Final Net Worth: {networth_vec[-1]:.2f}")
+    print(f"k (days in position %): {k_ratio}")
+
+    #generate_metrics_report_main()
 
 if __name__ == "__main__":
     strategy = get_strategy(config["strategy"])
     params = get_params(config)
+
     run_backtest(strategy, params)
 
 

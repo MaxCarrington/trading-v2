@@ -1,20 +1,138 @@
+# Smoke-test backtest configuration.
+# Minimal run used to verify a fresh install works end-to-end.
+# Run with: python scripts/run_backtest.py --config configs/backtest_smoke.yaml
+
 strategy: "momentum_v1.2"
+
 provider: "OANDA"
 security_type: "forex"
+starting_capital: 1000
 
-volatility_lookback: 12
-momentum_lookback: 12
-holding_period: 34
-rsi_lookback: 12
-ma_lookback: 27
-ma_thresh: 66
-overbought_thresh: 76
-oversold_thresh: 27
+symbols:
+  - "AUD_USD"
+  - "EUR_USD"
+  - "GBP_USD"
+  - "NZD_USD"
+  - "USD_CAD"
+  - "USD_CHF"
+  #- "USD_JPY"
 
-price_to_use: "Mid"
-ma_type: "WMA"
+timeframe: "M15"
+start_date: "01-01"
+end_date: "06-01"
+year: "2025"
 
-momentum_wSize: 100
-p-val_len_thresh: 0.97
-momentum_len_thresh: 0.77
-momentum_score_thresh: 0.65
+parameters:
+  momentum_lookback:
+    AUD_USD: 12
+    EUR_USD: 12
+    GBP_USD: 12
+    NZD_USD: 12
+    USD_CAD: 12
+    USD_CHF: 12
+    #USD_JPY: 12
+  lookback:
+    AUD_USD: 12
+    EUR_USD: 12
+    GBP_USD: 12
+    NZD_USD: 12
+    USD_CAD: 12
+    USD_CHF: 12
+    #USD_JPY: 12
+  rsi_lookback:
+    AUD_USD: 12
+    EUR_USD: 12
+    GBP_USD: 12
+    NZD_USD: 12
+    USD_CAD: 12
+    USD_CHF: 12
+    #USD_JPY: 12
+  ma_lookback:
+    AUD_USD: 12
+    EUR_USD: 12
+    GBP_USD: 12
+    NZD_USD: 12
+    USD_CAD: 12
+    USD_CHF: 12
+    #USD_JPY: 12
+  ma_thresh:
+    AUD_USD: 0.66
+    EUR_USD: 0.66
+    GBP_USD: 0.66
+    NZD_USD: 0.66
+    USD_CAD: 0.66
+    USD_CHF: 0.66
+    #USD_JPY: 0.66
+  overbought_thresh:
+    AUD_USD: 76
+    EUR_USD: 76
+    GBP_USD: 76
+    NZD_USD: 76
+    USD_CAD: 76
+    USD_CHF: 76
+    #USD_JPY: 76
+  oversold_thresh:
+    AUD_USD: 27
+    EUR_USD: 27
+    GBP_USD: 27
+    NZD_USD: 27
+    USD_CAD: 27
+    USD_CHF: 27
+    #USD_JPY: 27
+  momentum_len_thresh:
+    AUD_USD: 0.77
+    EUR_USD: 0.77
+    GBP_USD: 0.77
+    NZD_USD: 0.77
+    USD_CAD: 0.77
+    USD_CHF: 0.77
+    #USD_JPY: 0.77
+  momentum_score_thresh:
+    AUD_USD: 70
+    EUR_USD: 70
+    GBP_USD: 70
+    NZD_USD: 70
+    USD_CAD: 70
+    USD_CHF: 70
+    #USD_JPY: 70
+  ma_type: "EMA"
+  momentum_wSize:
+    AUD_USD: 15
+    EUR_USD: 15
+    GBP_USD: 15
+    NZD_USD: 15
+    USD_CAD: 15
+    USD_CHF: 15
+    #USD_JPY: 5
+  p_val_len_thresh:
+    AUD_USD: 0.97
+    EUR_USD: 0.97
+    GBP_USD: 0.97
+    NZD_USD: 0.97
+    USD_CAD: 0.97
+    USD_CHF: 0.97
+    #USD_JPY: 0.97
+  max_holding_duration:
+    AUD_USD: 35
+    EUR_USD: 35
+    GBP_USD: 35
+    NZD_USD: 35
+    USD_CAD: 35
+    USD_CHF: 35
+    #USD_JPY: 35
+
+  # Risk management
+  max_open_positions: 1
+  position_size_type: "fixed"
+  position_size: 1000
+  parameters:
+
+  # ATR-based stop loss
+  stop_loss_type: "atr"
+  stop_loss_value: 2.0       # 2.0 = stop at 2× ATR from entry
+
+  # Take profit can stay percentage-based for now
+  take_profit_type: "atr"
+  take_profit_value: 5.0
+
+  atr_lookback: 14           # standard

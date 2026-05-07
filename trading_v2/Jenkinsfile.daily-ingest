@@ -1,0 +1,107 @@
+// fetch yesterdays data and update the current data with this data 
+pipeline {
+    // Run on any available Jenkins agent/executor
+    agent any
+
+    triggers {
+        // Automatically trigger this pipeline every day at 22:00 UTC
+        // This runs after forex markets close for the day
+        cron('0 22 * * *')
+    }
+
+    environment {
+        // Securely pull the OANDA API token from Jenkins' credentials store
+        // This avoids hardcoding sensitive tokens in the pipeline
+        OANDA_API_TOKEN     = credentials('oanda-api-token')
+
+        // Use the practice/demo OANDA environment (as opposed to 'live')
+        OANDA_ENVIRONMENT   = 'practice'
+
+        // Absolute path to the Python binary inside your conda trading environment
+        // Ensures the correct environment is used rather than system Python
+        PYTHON = '/opt/homebrew/Caskroom/miniconda/base/envs/trading-env/bin/python'
+    }
+
+    stages {
+
+        // Stage 1: Verify Python is available and install project dependencies
+        stage('Setup') {
+            steps {
+                // Print Python version as a sanity check
+                sh '${PYTHON} --version'
+
+                // Install the project and its dev dependencies in editable mode
+                // --quiet suppresses verbose pip output in the logs
+                sh '${PYTHON} -m pip install -e ".[dev]" --quiet'
+            }
+        }
+
+        // Stage 2: Fetch the previous day's forex data from OANDA
+        stage('Fetch yesterday\'s data') {
+            steps {
+                script {
+                    // Dynamically compute yesterday's date in UTC format (YYYY-MM-DD)
+                    // -u = UTC, -v-1d = subtract 1 day
+                    def yesterday = sh(
+                        script: 'date -u -v-1d +%Y-%m-%d',
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Fetching OANDA data for ${yesterday}"
+
+                    // Run the data ingestion script, passing:
+                    // --data forex        = fetch forex instruments
+                    // --period            = date range (yesterday to yesterday = single day)
+                    // --timeframe         = fetch across all these timeframes (D, H4, H1, etc.)
+                    sh """
+                        ${PYTHON} scripts/generate_backtest_data.py \\
+                          --data forex \\
+                          --period ${yesterday},${yesterday} \\
+                          --timeframe D,H4,H1,M30,M15,M5,M1
+                    """
+                }
+            }
+        }
+
+        // Stage 3: Verify the data was actually written to disk as expected
+        stage('Verify') {
+            steps {
+                sh '''
+                    # Build the expected file path based on today's year and yesterday's date
+                    YEAR=$(date -u +%Y)
+                    YESTERDAY_MMDD=$(date -u -v-1d +%m-%d)
+
+                    # Check for the AUD_USD daily CSV as a representative sample file
+                    EXPECTED="data/raw/oanda/forex/AUD_USD/${YEAR}/D/${YESTERDAY_MMDD}/AUD_USD.csv"
+
+                    if [ ! -f "$EXPECTED" ]; then
+                        # File missing — log a warning but don't fail the build
+                        # This can be normal on weekends when markets are closed
+                        echo "Expected file not found: $EXPECTED"
+                        echo "(this may be normal on a weekend)"
+                    else
+                        # File found — print confirmation and line count as a basic data check
+                        echo "Verified: $EXPECTED"
+                        wc -l "$EXPECTED"
+                    fi
+                '''
+            }
+        }
+    }
+
+    post {
+        // If any stage fails, send an email alert with a link to the build logs
+        failure {
+            emailext(
+                subject: "Daily OANDA ingest FAILED — ${env.BUILD_NUMBER}",
+                body: "Build URL: ${env.BUILD_URL}\n\nCheck the console output.",
+                to: 'maxcarrington0002@gmail.com'
+            )
+        }
+
+        // If all stages pass, log a simple success message
+        success {
+            echo 'Daily OANDA ingest completed successfully.'
+        }
+    }
+}

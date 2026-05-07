@@ -16,9 +16,10 @@ import pandas as pd
 from trading.data.data_analysis.momentum_analysis import get_momentum_statistics, get_momentum_direction
 from trading.data.data_analysis.analysis import is_momentum
 from trading.data.data_analysis.volatility_analysis import get_volatility_statistics
+from trading.indicators.average_true_range import calculate_rolling_atr
 from trading.risk_management.trade_record_management import TradeRecords
-from trading.risk_management.stop_losses import fixed_stop_loss
-from trading.risk_management.take_profit import fixed_take_profit
+from trading.risk_management.stop_losses import compute_stop_loss
+from trading.risk_management.take_profit import compute_take_profit
 from trading.indicators.moving_averages import calculate_moving_average
 from trading.indicators.relative_strength_index import calculate_rsi, is_rsi_overbought, is_rsi_oversold
 
@@ -45,7 +46,6 @@ def momentum_strategy_v1_2(
 
     # Update store with the *previous* bar per series
     store = update_store(store, new_row_list, series)
-    max_holding_duration = 20# CHANGE THIS TOO
     num_series = len(series)
     market      = [0] * num_series
     limit1      = [0] * num_series
@@ -67,6 +67,7 @@ def momentum_strategy_v1_2(
             overbought_thresh = params["overbought_thresh"][symbol]
             oversold_thresh = params["oversold_thresh"][symbol]
             momentum_score_thresh = params["momentum_score_thresh"][symbol]
+            max_holding_duration = params["max_holding_duration"][symbol]
 
             # Close existing trades
             store["trade_records"][symbol].close_trade_records(
@@ -86,7 +87,14 @@ def momentum_strategy_v1_2(
             # 3. Calculate indicators for this symbol
             close_series = store["ohlcv"][symbol]["Close"]
             ma_value = calculate_moving_average(ma_type, close_series, ma_lookback).iloc[-1]
+            df = store["ohlcv"][symbol]
+            atr_lookback = params.get("atr_lookback", 14)
+            atr_series = calculate_rolling_atr(df, lookback=atr_lookback)
 
+            # Store the latest ATR value so SL/TP functions can reach it
+            if "atr_value" not in store:
+                store["atr_value"] = {}
+            store["atr_value"][symbol] = atr_series.iloc[-1]
             rsi_value = calculate_rsi(close_series, rsi_lookback).iloc[-1]
 
             store["pending_rsi_value"][symbol] = rsi_value
@@ -94,7 +102,6 @@ def momentum_strategy_v1_2(
 
             # --- Phase 1: Execute pending trade at today's open ---
             if store["pending_trades"][symbol] != 0 and store["pending_entry_date"][symbol] is not None:
-                print("SPREAD COST:", row["Spread"])
                 store["trade_records"][symbol].add_new_trade_record(
                     asset=symbol,
                     time_frame=timeframe,
@@ -103,8 +110,14 @@ def momentum_strategy_v1_2(
                     entry_spread=row["Spread"],
                     pos_size=pos_size,
                     trade_type="Buy" if store["pending_trades"][symbol] == 1 else "Sell",
-                    take_profit=fixed_take_profit(store["pending_trades"][symbol], row["Open"]),
-                    stop_loss=fixed_stop_loss(store["pending_trades"][symbol], row["Open"]),
+                    take_profit=compute_take_profit(trade_type=store["pending_trades"][symbol],
+                                            entry_price=row["Open"],
+                                            params=params,
+                                            atr_value=store.get("atr_value", {}).get(symbol)),
+                    stop_loss=compute_stop_loss(trade_type=store["pending_trades"][symbol],
+                                                entry_price=row["Open"],
+                                                params=params,
+                                                atr_value=store.get("atr_value", {}).get(symbol)),
                     max_holding_duration=max_holding_duration,
                     normalised_score=store["pending_normalised_score"][symbol],
                     combined_volatility_score=store["pending_combined_volatility_score"][symbol],
@@ -132,7 +145,7 @@ def momentum_strategy_v1_2(
             )
             if should_trade:
                 store["current_momentum_periods"][symbol].append(len(store["ohlcv"][symbol]) - 1)
-                if len(store["current_momentum_periods"][symbol]) > 2:
+                if len(store["current_momentum_periods"][symbol]) > 0:
                     start = store["current_momentum_periods"][symbol][0]
                     end = store["current_momentum_periods"][symbol][-1]
 

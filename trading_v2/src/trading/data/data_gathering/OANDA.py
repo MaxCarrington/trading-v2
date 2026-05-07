@@ -117,10 +117,3 @@ def get_data_from_period(start_date, end_date, time_frames=get_time_frames(), pa
         get_daily_data_for_date(date_str, time_frames, pairs)
         print(f"Completed fetching data for {date_str}.\n")
         current_date += timedelta(days=1)
-
-''' Example call: - This will get all available data in 2025 
-python scripts/generate_backtest_data.py \
-  --data forex \
-  --period 2025-01-01,2025-12-31 \
-  --timeframe D,H4,H1,M30,M15,M5,M1
-'''

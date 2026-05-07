@@ -38,29 +38,32 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 # ---------------------------------------------------------------------------
 # 1. Find the latest trade-records CSV
 # ---------------------------------------------------------------------------
-def find_latest_csvs(results_dir: Path) -> list[Path]:
-    """Return all CSVs from the most recently modified strategy sub-folder."""
-    csvs = sorted(results_dir.rglob("trade_records_*.csv"), key=lambda p: p.stat().st_mtime)
+def find_latest_csv(results_dir: Path) -> Path:
+    """Return the single most recently modified trade-records CSV."""
+    csvs = sorted(
+        results_dir.rglob("trade_records_*.csv"),
+        key=lambda p: p.stat().st_mtime,
+    )
     if not csvs:
-        # Fall back to any trade_records file
-        csvs = sorted(results_dir.rglob("trade_records*.csv"), key=lambda p: p.stat().st_mtime)
+        # Fallback to the loose pattern, just in case naming drifts
+        csvs = sorted(
+            results_dir.rglob("trade_records*.csv"),
+            key=lambda p: p.stat().st_mtime,
+        )
     if not csvs:
         print("No trade-record CSVs found under", results_dir)
         sys.exit(1)
 
-    # Group by parent folder; pick the folder whose newest file is the latest
-    latest_folder = csvs[-1].parent
-    folder_csvs = [p for p in csvs if p.parent == latest_folder]
-    print(f"Using {len(folder_csvs)} CSV(s) from: {latest_folder}")
-    return folder_csvs
+    latest = csvs[-1]
+    print(f"Using latest CSV: {latest}")
+    return latest
 
 
 # ---------------------------------------------------------------------------
 # 2. Load and merge CSVs
 # ---------------------------------------------------------------------------
-def load_trades(csv_paths: list[Path]) -> pd.DataFrame:
-    frames = [pd.read_csv(p) for p in csv_paths]
-    df = pd.concat(frames, ignore_index=True)
+def load_trades(csv_path: Path) -> pd.DataFrame:
+    df = pd.read_csv(csv_path)
 
     # Parse date columns
     for col in ("datetime", "entry_date", "exit_date"):
@@ -72,8 +75,7 @@ def load_trades(csv_paths: list[Path]) -> pd.DataFrame:
         df = df[df["closed"].astype(str).str.lower() == "true"]
         df = df[df["cancelled"].astype(str).str.lower() == "false"]
 
-    df = df.sort_values("datetime").reset_index(drop=True)
-    return df
+    return df.sort_values("datetime").reset_index(drop=True)
 
 
 # ---------------------------------------------------------------------------
@@ -239,7 +241,7 @@ def _metric_row(label, value, good=None) -> str:
     return f'<tr style="background:{colour}"><td>{label}</td><td><strong>{value}</strong></td></tr>'
 
 
-def write_html(metrics: dict, charts: dict, out_path: Path, csv_paths: list[Path]):
+def write_html(metrics: dict, charts: dict, out_path: Path, csv_path: Path):
     nan_str = lambda v: "N/A" if (isinstance(v, float) and math.isnan(v)) else str(v)
 
     win_good     = metrics.get("win_rate_pct", 0) >= 50
@@ -289,7 +291,7 @@ def write_html(metrics: dict, charts: dict, out_path: Path, csv_paths: list[Path
             <h3>{title}</h3>
             <img src="data:image/png;base64,{charts[key]}" style="max-width:100%;margin-bottom:24px;">"""
 
-    sources = "<br>".join(str(p) for p in csv_paths)
+    sources = str(csv_path)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -337,9 +339,9 @@ def write_html(metrics: dict, charts: dict, out_path: Path, csv_paths: list[Path
 # ---------------------------------------------------------------------------
 # 6. Main
 # ---------------------------------------------------------------------------
-def main():
-    csv_paths = find_latest_csvs(RESULTS_DIR)
-    df = load_trades(csv_paths)
+def generate_metrics_reportmain():
+    csv_path = find_latest_csv(RESULTS_DIR)
+    df = load_trades(csv_path)
 
     print(f"Loaded {len(df)} closed trades.")
 
@@ -347,14 +349,18 @@ def main():
     charts  = build_charts(df) if not df.empty else {}
 
     # Write JSON
-    timestamp   = datetime.now().strftime("%Y%m%d_%H%M%S")
-    json_path   = REPORTS_DIR / f"metrics_{timestamp}.json"
-    html_path   = REPORTS_DIR / "performance_report.html"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    json_path = REPORTS_DIR / "JSON" / datetime.now().strftime('%Y%m%d') / f"metrics_{timestamp}.json"
+    html_path = REPORTS_DIR / "HTML" / datetime.now().strftime('%Y%m%d') / "performance_report.html"
+
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    html_path.parent.mkdir(parents=True, exist_ok=True)
 
     json_path.write_text(json.dumps(metrics, indent=2, default=str), encoding="utf-8")
     print(f"JSON metrics written to: {json_path}")
 
-    write_html(metrics, charts, html_path, csv_paths)
+    write_html(metrics, charts, html_path, csv_path)
 
     # Print summary to stdout so it shows in Jenkins console
     print("\n========== PERFORMANCE SUMMARY ==========")
@@ -365,4 +371,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    generate_metrics_reportmain()

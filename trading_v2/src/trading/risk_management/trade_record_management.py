@@ -107,7 +107,7 @@ class TradeRecords:
             # Increment holding duration
             self.trade_records.at[idx, "holding_duration"] += 1
 
-            trade_type = 1 if trade["trade_type"] == "buy" else -1
+            trade_type = 1 if trade["trade_type"] == "Buy" else -1
             pos_size = trade["pos_size"]
 
             # Take-profit detection
@@ -144,7 +144,7 @@ class TradeRecords:
             self.trade_records.at[idx, "pending_close"] = False
 
             # Direction
-            trade_type = 1 if trade["trade_type"] == "buy" else -1
+            trade_type = 1 if trade["trade_type"] == "Buy" else -1
             entry_price = trade["entry_price"]
             pos_size = trade["pos_size"]
 
@@ -161,7 +161,6 @@ class TradeRecords:
 
             avg_spread = 0.5 * (entry_spread + todays_spread)
             spread_cost = avg_spread * abs(pos_size)
-            print("SPREAD COST: ", spread_cost)
             # 3) Net profit
             profit = gross - spread_cost
 
@@ -187,10 +186,10 @@ class TradeRecords:
             if trade_record["closed"] and trade_record["exit_price"] is None and not trade_record["cancelled"]:
                 trade_record["exit_price"] = todays_open
                 if trade_record["limit_order"]:
-                    profit = (todays_open - trade_record["entry_price"]) * position_size if trade_record["trade_type"] == "buy" \
+                    profit = (todays_open - trade_record["entry_price"]) * position_size if trade_record["trade_type"] == "Buy" \
                              else (trade_record["entry_price"] - todays_open) * position_size
                 else:
-                    profit = ((todays_open - trade_record["entry_price"]) * position_size - slippage * position_size) if trade_record["trade_type"] == "buy" \
+                    profit = ((todays_open - trade_record["entry_price"]) * position_size - slippage * position_size) if trade_record["trade_type"] == "Buy" \
                              else ((trade_record["entry_price"] - todays_open) * position_size - slippage * position_size)
                 trade_record["profit"] = round(profit, 4)
                 store = self.update_trade_history(store, round(profit, 4), series_index)
@@ -283,15 +282,15 @@ class TradeRecords:
                     todays_high = new_row_list[series_index]["High"]
                     todays_low = new_row_list[series_index]["Low"]
 
-                    if trade_direction == "buy" and todays_low < entry_price:
+                    if trade_direction == "Buy" and todays_low < entry_price:
                         if prompts_on:
-                            print(f"Series {series_index} buy limit executed at {entry_price} on {latest_date}; "
+                            print(f"Series {series_index} Buy limit executed at {entry_price} on {latest_date}; "
                                   f"low {todays_low} breached the limit.")
                         trade_record["entry_date"] = latest_date
 
-                    elif trade_direction == "sell" and todays_high > entry_price:
+                    elif trade_direction == "Sell" and todays_high > entry_price:
                         if prompts_on:
-                            print(f"Series {series_index} sell limit executed at {entry_price} on {latest_date}; "
+                            print(f"Series {series_index} Sell limit executed at {entry_price} on {latest_date}; "
                                   f"high {todays_high} breached the limit.")
                         trade_record["entry_date"] = latest_date
 
@@ -309,7 +308,7 @@ class TradeRecords:
         return store
 
     # Close all open trades for a series and return total position adjustment
-    def sell_all_open_positions(self, store, series_index, exit_price):
+    def Sell_all_open_positions(self, store, series_index, exit_price):
         adjusted_positions = 0
         trade_records = store["trade_records"][series_index]
 
@@ -319,7 +318,7 @@ class TradeRecords:
                 closed = trade_record["closed"]
                 position_size = trade_record["position_size"]
                 if not closed:
-                    if trade_type == "buy":
+                    if trade_type == "Buy":
                         adjusted_positions -= position_size
                         store = self.close_trade_record(store, series_index, trade_record)
                     else:
@@ -367,15 +366,15 @@ class TradeRecords:
             sz = trade_record["position_size"]
 
             # Check if take-profit hit for long
-            if order_type == "buy" and todays_open >= tp:
-                position_size -= sz  # sell to close long
-                log(f"Series {series_index}: take profit hit at {todays_open}, selling {sz} to close long")
+            if order_type == "Buy" and todays_open >= tp:
+                position_size -= sz  # Sell to close long
+                log(f"Series {series_index}: take profit hit at {todays_open}, Selling {sz} to close long")
                 store = close_trade(store, series_index, trade_record)
 
             # Check if take-profit hit for short
-            elif order_type == "sell" and todays_open <= tp:
-                position_size += sz  # buy to close short
-                log(f"Series {series_index}: take profit hit at {todays_open}, buying {sz} to close short")
+            elif order_type == "Sell" and todays_open <= tp:
+                position_size += sz  # Buy to close short
+                log(f"Series {series_index}: take profit hit at {todays_open}, Buying {sz} to close short")
                 store = close_trade(store, series_index, trade_record)
 
         return {"position_size": [position_size], "store": store}

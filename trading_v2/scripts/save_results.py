@@ -11,7 +11,7 @@ Called by Jenkins after each backtest run.
 
 Usage:
     python scripts/save_results.py \
-        --config    trading_v2/configs/backtest_config.yaml \
+        --config    trading_v2/configs/backtest_smoke.yaml \
         --metrics-file trading_v2/configs/backtest_config_metrics.json \
         --db        /path/to/backtest_results.db \
         --build     42

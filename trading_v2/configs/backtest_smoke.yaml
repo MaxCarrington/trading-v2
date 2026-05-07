@@ -6,6 +6,7 @@ strategy: "momentum_v1.2"
 
 provider: "OANDA"
 security_type: "forex"
+starting_capital: 1000
 
 symbols:
   - "AUD_USD"

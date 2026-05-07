@@ -8,7 +8,7 @@
 # Argument 6: (optional) time frame (e.g D, H4, H1, M30, M15, M5, M1)
 # Argument 7: (optional) --tickers flag (if not provided, defaults to all tickers in constants.py)
 # Argument 8: (optional) comma-separated tickers (e.g. AAPL,MSFT,GOOGL,AMZN)
-# Run with: python scripts/run_backtest.py --config configs/backtest_config.yaml
+# Run with: python scripts/run_backtest.py --config configs/backtest_smoke.yaml
 #--------------------------------------------------------------------------------
 import sys, os
 
@@ -138,3 +138,10 @@ def start():
 start()
 
 # Call this file from root dir using e.g: python scripts/generate_backtest_data.py --data forex --period 2025-01-01,2025-10-28 --timeframe H4,H1
+
+''' Example call: - This will get all available data in 2025 
+python scripts/generate_backtest_data.py \
+  --data forex \
+  --period 2025-01-01,2025-12-31 \
+  --timeframe D,H4,H1,M30,M15,M5,M1
+'''
