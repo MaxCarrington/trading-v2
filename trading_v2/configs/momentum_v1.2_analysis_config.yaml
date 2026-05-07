@@ -125,7 +125,6 @@ parameters:
   max_open_positions: 1
   position_size_type: "fixed"
   position_size: 1000
-  parameters:
 
   # ATR-based stop loss
   stop_loss_type: "atr"

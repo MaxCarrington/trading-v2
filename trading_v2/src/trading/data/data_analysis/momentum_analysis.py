@@ -244,3 +244,15 @@ def calculate_net_return(period_df):
     start_price = period_df["Close"].iloc[0]
     end_price   = period_df["Close"].iloc[-1]
     return (end_price - start_price) / start_price
+
+# Calculates a Donchian breakout
+def generate_donchian_breakout(df, lookback=20):
+    upper = df["High"].rolling(lookback).max().shift(1)
+    lower = df["Low"].rolling(lookback).min().shift(1)
+    last_close = df["Close"].iloc[-1]
+    if last_close > upper.iloc[-1]:
+        return {"signal": True, "direction": 1, "score": 100}   # long breakout
+    elif last_close < lower.iloc[-1]:
+        return {"signal": True, "direction": -1, "score": 100}  # short breakdown
+    else:
+        return {"signal": False, "direction": 0, "score": 0}

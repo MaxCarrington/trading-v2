@@ -253,5 +253,3 @@ def update_store(store, new_row_list, series):
 
 
 
-
-
