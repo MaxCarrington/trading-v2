@@ -1,13 +1,10 @@
 // Jenkinsfile
-// -----------
-// Triggered on every push to Bitbucket.
-// For each strategy config found, runs the backtest, saves results to SQLite,
-// and publishes an HTML report viewable inside Jenkins.
-//
-// REQUIREMENTS in Jenkins:
-//   - "HTML Publisher" plugin  (Manage Jenkins → Plugins)
-//   - A Python 3 virtualenv or system Python with your dependencies installed
-//   - BACKTEST_DB env var (optional) — defaults to backtest_results.db in workspace
+
+// Jenkins calls a function to generate random backtest data, which chooses a random period of data to test the strategy on. 
+// If the data does not exist, the data is then generated using: scripts/generate_backtest_data.py
+// The strategy is then run based on the strategy branch that the push/commit is on, using an akin command to: python scripts/run_backtest.py --config configs/temp.yaml
+// Once the strategy has run, the results of the strategy are then generated with: python scripts/generate_metrics_report.py.
+// Once the results have been generated, the results, strategy config and strategy code are then saved in the Jenkins results directory.
 
 pipeline {
 

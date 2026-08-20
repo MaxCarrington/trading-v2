@@ -15,9 +15,9 @@ symbols:
   - "USD_CHF"
   #- "USD_JPY"
 
-timeframe: "M5"
+timeframe: "H1"
 start_date: "01-01"
-end_date: "01-02"
+end_date: "12-24"
 year: "2025"
 
 parameters:
@@ -119,12 +119,15 @@ parameters:
     USD_CHF: 35
     #USD_JPY: 35
 
+  # Signal type to use
+  signal_type: "donchian"          # or "correlation" for the existing score
+  donchian_lookback: 20            # bars; tune this
 
   # Risk management
   position_size_type: "risk_based"
   position_size: 1000             # ← add (unused when type=risk_based, but validator wants it)
   risk_per_trade: 0.005
-  max_position_size: 100000
+  max_position_size: 5000
   max_open_positions: 1           # ← add (used to cap concurrent trades; 1 = strict one-x
 
   # ATR-based stop loss

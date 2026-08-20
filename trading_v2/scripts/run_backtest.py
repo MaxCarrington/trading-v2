@@ -300,37 +300,39 @@ def check_lengths(num_series, orders):
             raise ValueError(f"len({k})={len(orders[k])} != num_series={num_series}")
 
 def _load_series_for_pair(pair, params):
-    """All your existing loading logic, lifted out unchanged."""
     year       = params["year"]
     timeframe  = params["timeframe"]
     start_date = params["start_date"]
     end_date   = params["end_date"]
 
-    if params["security_type"] == "forex" and params["provider"] == "OANDA":
-        base_dir = os.path.join(constants.OANDA_FOREX_DATA_DIR, pair, year, timeframe)
-
-        if start_date == year and end_date == year:
-            series = load_mid_ohlcv(os.path.join(base_dir, "merged", f"{pair}_{year}.csv"))
-        elif start_date == end_date:
-            series = load_mid_ohlcv(os.path.join(base_dir, start_date, f"{pair}.csv"))
-        else:
-            series = load_mid_ohlcv_range(pair, year, timeframe, start_date, end_date)
-    else:
+    if params["security_type"] != "forex" or params["provider"] != "OANDA":
         raise NotImplementedError(
-            f"No loader for provider={params['provider']}, security_type={params['security_type']}"
+            f"No loader for provider={params['provider']}, "
+            f"security_type={params['security_type']}"
         )
 
-    # Timeframe-specific slicing — kept exactly as-is
-    if timeframe in ["D", "H4", "H1"]:
-        return series
-    elif timeframe in ["M30", "M15"]:
-        return series.loc["2025-01":"2025-02"]
-    elif timeframe == "M5":
-        return series.loc["2025-01-01":"2025-01-07"]
-    elif timeframe == "M1":
-        return series.loc["2025-01-01":"2025-01-02"]
-    else:
-        raise ValueError(f"Unknown timeframe: {timeframe}")
+    # Always load the merged yearly file — it contains every bar fetched for
+    # the year. Date-range slicing below uses the configured start/end dates.
+    base_dir    = os.path.join(constants.OANDA_FOREX_DATA_DIR, pair, year, timeframe)
+    merged_file = os.path.join(base_dir, "merged", f"{pair}_{year}.csv")
+
+    if not os.path.exists(merged_file):
+        raise FileNotFoundError(
+            f"Merged data file not found for {pair} ({year} {timeframe}):\n"
+            f"  {merged_file}\n"
+            f"Run scripts/generate_backtest_data.py to fetch this data first."
+        )
+
+    series = load_mid_ohlcv(merged_file)
+
+    # Slice to the configured date range. For full-year daily configs,
+    # start_date == end_date == year produces a slice that covers the whole year.
+    if timeframe in ("D", "H4", "H1", "M30", "M15", "M5", "M1"):
+        start_str = f"{year}-{start_date}" if start_date != year else year
+        end_str   = f"{year}-{end_date}"   if end_date   != year else year
+        return series.loc[start_str:end_str]
+
+    raise ValueError(f"Unknown timeframe: {timeframe}")
 
 def _align_dataframes(dfs):
     """

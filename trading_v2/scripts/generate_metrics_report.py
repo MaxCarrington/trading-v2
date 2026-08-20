@@ -224,6 +224,67 @@ def build_charts(df: pd.DataFrame) -> dict[str, str]:
     charts["pnl_dist"] = _fig_to_b64(fig)
     plt.close(fig)
 
+    # --- Per-asset equity curves (stacked subplots) ---
+    if "asset" in df.columns and "datetime" in df.columns:
+        assets = sorted(df["asset"].unique())
+        n = len(assets)
+        if n > 0:
+            # Compute per-asset cumulative P&L on a shared time index so we can
+            # forward-fill non-trade bars to a flat line between trades.
+            full_index = df["datetime"].sort_values().unique()
+
+            fig, axes = plt.subplots(
+                nrows=n, ncols=1,
+                figsize=(11, max(2.5, 2.0 * n)),
+                sharex=True,
+            )
+            # Make axes always iterable, even when n == 1
+            if n == 1:
+                axes = [axes]
+
+            for ax, asset in zip(axes, assets):
+                sub = df[df["asset"] == asset].sort_values("datetime")
+                cum = sub["profit"].cumsum()
+                final = cum.iloc[-1] if len(cum) else 0.0
+                colour = "#2ca02c" if final >= 0 else "#d62728"
+
+                ax.plot(sub["datetime"].values, cum.values,
+                        linewidth=1.2, color=colour, marker="o", markersize=2.5)
+                ax.axhline(0, color="black", linewidth=0.6, linestyle="--")
+                ax.set_title(f"{asset}   final: {final:+,.2f}",
+                             fontsize=10, loc="left")
+                ax.set_ylabel("Cum P&L")
+                ax.grid(True, alpha=0.3)
+                ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+
+            axes[-1].set_xlabel("Trade date")
+            fig.autofmt_xdate()
+            fig.suptitle("Equity Curves per Asset", fontsize=12, y=1.001)
+            fig.tight_layout()
+            charts["asset_equity_curves"] = _fig_to_b64(fig)
+            plt.close(fig)
+
+    # --- Per-asset equity curves (overlaid, one shared axes) ---
+    if "asset" in df.columns and "datetime" in df.columns:
+        fig, ax = plt.subplots(figsize=(11, 5))
+        for asset in sorted(df["asset"].unique()):
+            sub = df[df["asset"] == asset].sort_values("datetime")
+            cum = sub["profit"].cumsum()
+            ax.plot(sub["datetime"].values, cum.values,
+                    linewidth=1.2, marker="o", markersize=2.5, label=asset)
+
+        ax.axhline(0, color="black", linewidth=0.6, linestyle="--")
+        ax.set_title("Cumulative P&L by Asset (overlaid)")
+        ax.set_ylabel("Cum P&L")
+        ax.set_xlabel("Trade date")
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+        ax.grid(True, alpha=0.3)
+        ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), fontsize=8)
+        fig.autofmt_xdate()
+        fig.tight_layout()
+        charts["asset_equity_overlay"] = _fig_to_b64(fig)
+        plt.close(fig)
+
     return charts
 
 
@@ -282,15 +343,32 @@ def write_html(metrics: dict, charts: dict, out_path: Path, csv_path: Path):
     )
 
     # Chart tags
-    chart_tags = ""
-    for title, key in [("Equity Curve", "equity_curve"),
-                       ("Drawdown",     "drawdown"),
-                       ("PnL Distribution", "pnl_dist")]:
-        if key in charts:
-            chart_tags += f"""
-            <h3>{title}</h3>
-            <img src="data:image/png;base64,{charts[key]}" style="max-width:100%;margin-bottom:24px;">"""
+    chart_titles = [
+        ("Equity Curve", "equity_curve"),
+        ("Drawdown", "drawdown"),
+        ("P&L Distribution", "pnl_dist"),
+        ("P&L by Asset", "asset_pnl"),
+        ("Holding Duration", "holding_duration"),
+        ("Equity Curves per Asset", "asset_equity_curves"),  # ← new
+        ("Cumulative P&L Overlay", "asset_equity_overlay"),  # ← new
+    ]
 
+    # Chart HTML
+    chart_html = ""
+
+    for title, key in [
+        ("Equity Curve", "equity_curve"),
+        ("Drawdown", "drawdown"),
+        ("PnL Distribution", "pnl_dist"),
+        ("Equity Curves per Asset", "asset_equity_curves"),
+        ("Cumulative P&L Overlay", "asset_equity_overlay"),
+    ]:
+        if key in charts:
+            chart_html += f"""
+            <h3>{title}</h3>
+            <img src="data:image/png;base64,{charts[key]}"
+                 style="max-width:100%;margin-bottom:24px;">
+            """
     sources = str(csv_path)
 
     html = f"""<!DOCTYPE html>
@@ -326,8 +404,8 @@ def write_html(metrics: dict, charts: dict, out_path: Path, csv_path: Path):
 
   {breakdown_html}
 
-  <h2>Charts</h2>
-  {chart_tags}
+  <<h2>Charts</h2>
+  {chart_html}
 
 </body>
 </html>"""

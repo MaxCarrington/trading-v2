@@ -68,19 +68,15 @@ def is_momentum(momentum_stats, volatility_stats, minimum_momentum_thresh=70, hi
     volatility_low = volatility_stats["combined_score"].iloc[-1] <= low_volatility_thresh
     # determines whether momentum trading is permitted based on the flags
     if not has_momentum:
-        print(f"Momentum statistics not found, momentum score: {momentum_stats['normalised_score']}")
         return False, momentum_stats["normalised_score"]
 
     if trade_w_volatility:
         if volatility_high and trade_high_volatility:
-            print("Momentum found, trading with high volatility")
             return True, momentum_stats["normalised_score"]
         elif volatility_low and not trade_high_volatility:
-            print("Momentum found, trading with low volatility")
             return True, momentum_stats["normalised_score"]
         return False, momentum_stats["normalised_score"]
     else:
-        print("Momentum found, trading without volatility")
         return True, momentum_stats["normalised_score"]
 
 # A test to iterate through every data point in a series determining what type of pattern is being shown

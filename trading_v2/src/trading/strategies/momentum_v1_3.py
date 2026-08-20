@@ -13,7 +13,7 @@
 # is below the previous close, signaling sustained downward momentum. Volatility is monitored to filter entries.
 import pandas as pd
 
-from trading.data.data_analysis.momentum_analysis import get_momentum_statistics, get_momentum_direction
+from trading.data.data_analysis.momentum_analysis import get_momentum_statistics, get_momentum_direction, generate_donchian_breakout
 from trading.data.data_analysis.analysis import is_momentum
 from trading.data.data_analysis.volatility_analysis import get_volatility_statistics
 from trading.indicators.average_true_range import calculate_rolling_atr
@@ -23,21 +23,18 @@ from trading.risk_management.take_profit import compute_take_profit
 from trading.indicators.moving_averages import calculate_moving_average
 from trading.indicators.relative_strength_index import calculate_rsi, is_rsi_overbought, is_rsi_oversold
 
-
+# Returns the trade size based on the position-sizing config.
+#
+#    Config keys:
+#      position_size_type:   "fixed" or "risk_based"
+#      position_size:        units used when type == "fixed"
+#      risk_per_trade:       fraction of equity to risk per trade (e.g. 0.005 = 0.5%)
+#      max_position_size:    optional safety cap on computed size
+#
+#    For "risk_based":
+#        size = (equity * risk_per_trade) / sl_distance
+#    so a stop-out at the configured SL costs exactly `risk_per_trade` of equity.
 def _compute_pos_size(params, info, sl_distance):
-    """
-    Returns the trade size based on the position-sizing config.
-
-    Config keys:
-      position_size_type:   "fixed" or "risk_based"
-      position_size:        units used when type == "fixed"
-      risk_per_trade:       fraction of equity to risk per trade (e.g. 0.005 = 0.5%)
-      max_position_size:    optional safety cap on computed size
-
-    For "risk_based":
-        size = (equity * risk_per_trade) / sl_distance
-    so a stop-out at the configured SL costs exactly `risk_per_trade` of equity.
-    """
     sizing_type = params.get("position_size_type", "fixed")
 
     if sizing_type == "fixed":
@@ -58,6 +55,61 @@ def _compute_pos_size(params, info, sl_distance):
 
     raise ValueError(f"Unknown position_size_type: {sizing_type!r}")
 
+# Returns: (should_trade, direction, score, volatility_stats)
+#        should_trade: bool
+#        direction:    1 (long), -1 (short), 0 (flat)
+#        score:        for diagnostics/logging
+#        volatility_stats: same dict shape `analyse_momentum` returned
+
+#    Dispatches on params["signal_type"]:
+#      "correlation" (default) -> existing analyse_momentum path
+#      "donchian"               -> Donchian breakout
+def _detect_signal(store, symbol, params, timeframe, date, momentum_score_thresh):
+    signal_type = params.get("signal_type", "correlation")
+
+    if signal_type == "correlation":
+        # Existing path — unchanged
+        store, should_trade, score, vol_stats = analyse_momentum(
+            store, symbol, params, timeframe, date,
+            momentum_threshold=momentum_score_thresh,
+            trade_high_volatility=False,
+            trade_w_volatility=True,
+        )
+        if should_trade:
+            df = store["ohlcv"][symbol]
+            direction, _ = get_momentum_direction(df.iloc[-params.get("direction_lookback", 5):])
+        else:
+            direction = 0
+        return store, should_trade, direction, score, vol_stats
+
+    elif signal_type == "donchian":
+        df = store["ohlcv"][symbol]
+        lookback = params.get("donchian_lookback", 20)
+
+        # Need enough bars to compute the rolling channel
+        if len(df) < lookback + 1:
+            return store, False, 0, 0, _stub_volatility_stats(df)
+
+        result = generate_donchian_breakout(df, lookback=lookback)
+        should_trade = result["signal"]
+        direction    = result["direction"]
+        score        = result["score"]
+
+        # Still compute volatility stats so the trade record can store them
+        vol_stats = get_volatility_statistics(
+            df, params["lookback"][symbol], symbol, timeframe, date, None
+        )
+        return store, should_trade, direction, score, vol_stats
+
+    raise ValueError(f"Unknown signal_type: {signal_type!r}")
+
+#Empty-shaped volatility dict for early bars where we can't compute properly
+def _stub_volatility_stats(df):
+    return {
+        "combined_score": pd.Series([0.0], index=[df.index[-1]] if len(df) else []),
+        "period_vol":     [""],
+        "stddev":         pd.Series([0.0], index=[df.index[-1]] if len(df) else []),
+    }
 
 def momentum_strategy_v1_3(
     store,
@@ -170,81 +222,78 @@ def momentum_strategy_v1_3(
                 store["pending_pos_size"][symbol] = 0.0
 
             # --- Phase 2: Detect new signals and mark pending trade for tomorrow ---
-            store, should_trade, normalised_score, volatility_stats = analyse_momentum(
+            # --- Phase 2: Detect new signals using the configured signal_type ---
+            store, should_trade, direction, normalised_score, volatility_stats = _detect_signal(
                 store, symbol, params, timeframe, date,
-                momentum_threshold=momentum_score_thresh,
-                trade_high_volatility=False,
-                trade_w_volatility=True
+                momentum_score_thresh=momentum_score_thresh,
             )
+
             if should_trade:
-                store["current_momentum_periods"][symbol].append(len(store["ohlcv"][symbol]) - 1)
-                if len(store["current_momentum_periods"][symbol]) > 0:
-                    start = store["current_momentum_periods"][symbol][0]
-                    end = store["current_momentum_periods"][symbol][-1]
+                entry_volatility_score = volatility_stats["combined_score"].iloc[-1]
+                entry_volatility_period = volatility_stats["period_vol"][-1]
+                entry_volatility_stddev = volatility_stats["stddev"].iloc[-1]
 
-                    df_slice = store["ohlcv"][symbol].iloc[start:end + 1]
-                    direction, net_ret = get_momentum_direction(df_slice)
+                already_in_position = current_pos[i] != 0
 
-                    entry_volatility_score = volatility_stats["combined_score"].iloc[-1]  # latest combined score
-                    entry_volatility_period = volatility_stats["period_vol"][-1]  # latest categorical label
-                    entry_volatility_stddev = volatility_stats["stddev"].iloc[-1]  # latest stddev value
+                estimated_entry = row["Open"]
+                estimated_sl = compute_stop_loss(
+                    trade_type=direction,
+                    entry_price=estimated_entry,
+                    params=params,
+                    atr_value=store.get("atr_value", {}).get(symbol),
+                )
+                sl_distance = abs(estimated_entry - estimated_sl)
+                trade_size = (
+                    _compute_pos_size(params, info, sl_distance)
+                    if not already_in_position else 0.0
+                )
 
-                    # Already holding a position on this symbol — don't open another.
-                    # Position will close via SL/TP/max-hold; new entries only allowed after flat.
-                    already_in_position = current_pos[i] != 0
+                # Threshold check only applies to "correlation" signal type;
+                # Donchian is binary (score=100 when it fires, 0 otherwise)
+                threshold_ok = (
+                        params.get("signal_type", "correlation") == "donchian"
+                        or normalised_score > momentum_score_thresh
+                )
 
-                    # Pre-compute the SL we *would* place if this trade fires next bar,
-                    # so we can size the trade by risk-per-unit-of-equity.
-                    estimated_entry = row["Open"]
-                    estimated_sl = compute_stop_loss(
-                        trade_type=direction,
-                        entry_price=estimated_entry,
-                        params=params,
-                        atr_value=store.get("atr_value", {}).get(symbol),
-                    )
-                    sl_distance = abs(estimated_entry - estimated_sl)
-                    trade_size = (
-                        _compute_pos_size(params, info, sl_distance)
-                        if not already_in_position else 0.0
-                    )
-
-                    valid_signal = (
+                valid_signal = (
                         not already_in_position
                         and trade_size > 0
-                        and normalised_score > momentum_score_thresh
-                    )
+                        and threshold_ok
+                        and direction != 0
+                )
 
-                    if valid_signal and direction == 1:
-                        print(f"BUY SIGNAL. Score={normalised_score:.2f}, size={trade_size:.2f}, equity={info.get('netWorth', 0):.2f}")
-                        market[i] += trade_size
-                        store["pending_trades"][symbol] = 1
-                        store["pending_pos_size"][symbol] = trade_size
-                        store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
-                        store["pending_normalised_score"][symbol] = normalised_score
-                        store["pending_combined_volatility_score"][symbol] = entry_volatility_score
-                        store["pending_period_volatility_score"][symbol] = entry_volatility_period
-                        store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
+                if valid_signal and direction == 1:
+                    print(
+                        f"BUY  SIGNAL  {row['Time']}  {symbol}  Score={normalised_score:.2f}  size={trade_size:.2f}  equity={info.get('netWorth', 0):.2f}")
+                    market[i] += trade_size
+                    store["pending_trades"][symbol] = 1
+                    store["pending_pos_size"][symbol] = trade_size
+                    store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
+                    store["pending_normalised_score"][symbol] = normalised_score
+                    store["pending_combined_volatility_score"][symbol] = entry_volatility_score
+                    store["pending_period_volatility_score"][symbol] = entry_volatility_period
+                    store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
 
-                    elif valid_signal and direction == -1:
-                        print(f"SELL SIGNAL. Score={normalised_score:.2f}, size={trade_size:.2f}, equity={info.get('netWorth', 0):.2f}")
-                        market[i] -= trade_size
-                        store["pending_trades"][symbol] = -1
-                        store["pending_pos_size"][symbol] = trade_size
-                        store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
-                        store["pending_normalised_score"][symbol] = normalised_score
-                        store["pending_combined_volatility_score"][symbol] = entry_volatility_score
-                        store["pending_period_volatility_score"][symbol] = entry_volatility_period
-                        store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
+                elif valid_signal and direction == -1:
+                    print(
+                        f"SELL SIGNAL  {row['Time']}  {symbol}  Score={normalised_score:.2f}  size={trade_size:.2f}  equity={info.get('netWorth', 0):.2f}")
+                    market[i] -= trade_size
+                    store["pending_trades"][symbol] = -1
+                    store["pending_pos_size"][symbol] = trade_size
+                    store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
+                    store["pending_normalised_score"][symbol] = normalised_score
+                    store["pending_combined_volatility_score"][symbol] = entry_volatility_score
+                    store["pending_period_volatility_score"][symbol] = entry_volatility_period
+                    store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
 
-                    else:
-                        # Either already in position, or below threshold, or zero direction
-                        store["pending_trades"][symbol] = 0
-                        store["pending_pos_size"][symbol] = 0.0
-                        store["pending_entry_date"][symbol] = None
-                        store["pending_normalised_score"][symbol] = 0
-                        store["pending_combined_volatility_score"][symbol] = 0
-                        store["pending_period_volatility_score"][symbol] = ""
-                        store["pending_stddev_volatility_score"][symbol] = 0
+                else:
+                    store["pending_trades"][symbol] = 0
+                    store["pending_pos_size"][symbol] = 0.0
+                    store["pending_entry_date"][symbol] = None
+                    store["pending_normalised_score"][symbol] = 0
+                    store["pending_combined_volatility_score"][symbol] = 0
+                    store["pending_period_volatility_score"][symbol] = ""
+                    store["pending_stddev_volatility_score"][symbol] = 0
 
             else:
                 if store["current_momentum_periods"][symbol]:

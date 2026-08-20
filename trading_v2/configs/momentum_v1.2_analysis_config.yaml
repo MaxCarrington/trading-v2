@@ -17,9 +17,9 @@ symbols:
   - "USD_CHF"
   #- "USD_JPY"
 
-timeframe: "M15"
+timeframe: "M1"
 start_date: "01-01"
-end_date: "06-01"
+end_date: "12-24"
 year: "2025"
 
 parameters:
