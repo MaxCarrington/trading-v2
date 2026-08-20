@@ -17,11 +17,9 @@ CANDLES_WITH_VOLATILITY_DIR = os.path.join(FIGURES_DIR, "candles_with_volatility
 RESULTS_FIGURES_DIR = os.path.join(FIGURES_DIR, "results")
 PRICE_VOLATILITY_CORR_DIR = os.path.join(FIGURES_DIR, "price_volatility_corr")
 # Directories for storing stock and forex data
-DIVIDENDS_DIR = os.path.join(DATA_DIR, "stocks", "dividends")
 RAW_DATA_DIR = os.path.join(DATA_DIR, "raw")
 OANDA_FOREX_DATA_DIR = os.path.join(RAW_DATA_DIR, "oanda", "forex")
 CONFIGS_DIR = os.path.join(ROOT_DIR, "configs")
-DIVIDENDS_API_KEY = "REDACTED"
 
 # Dictionary of time frames with their corresponding granularity and price type
 

@@ -67,7 +67,7 @@ pipeline {
         stage('Generate Report') {
             steps {
                 echo "Generating HTML report..."
-                sh "${PYTHON} ${PROJECT_DIR}/scripts/generate_report.py --output ${PROJECT_DIR}/reports/report.html --last 20 --db ${BACKTEST_DB}"
+                sh "${PYTHON} ${PROJECT_DIR}/scripts/generate_metrics_report.py --output ${PROJECT_DIR}/reports/report.html --last 20 --db ${BACKTEST_DB}"
             }
         }
 

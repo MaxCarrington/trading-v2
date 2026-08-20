@@ -43,10 +43,6 @@ def get_time_frames():
 def get_pairs():
     return constants.PAIRS
 
-# Get the dividends API key
-def get_dividends_api_key():
-    return constants.DIVIDENDS_API_KEY
-
 # Get the root directory
 def get_root_dir():
     return constants.ROOT_DIR
@@ -62,23 +58,6 @@ def get_src_dir():
 # Get the data directory
 def get_data_dir():
     return constants.DATA_DIR
-
-# Get the dividends directory
-def get_dividends_dir():
-    return constants.DIVIDENDS_DIR
-
-# Load a dividend file for a given stock symbol and return the file path.
-def get_dividend_file(symbol):
-    dividend_path = os.path.join(constants.DIVIDENDS_DIR, symbol)
-    
-    if not os.path.isdir(dividend_path):
-        raise FileNotFoundError(f"Directory for symbol '{symbol}' not found at path: {dividend_path}")
-    else:
-        dividends_file = os.path.join(dividend_path, f"{symbol}_dividends.json")
-        if not os.path.isfile(dividends_file):
-            raise FileNotFoundError(f"Dividend file for symbol '{symbol}' not found at path: {dividends_file}")
-    
-    return dividends_file
 
 # Load a daily stock time series from CSV in a given year and return the file path.
 def get_time_series_file_path(symbol, year):

@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 import trading.utils.constants as constants
-from trading.utils.config import get_initial_capital
 
 # Calculates the maximum drawdown from a cumulative PnL series.
 def max_drawdown(cumPnL):
@@ -61,8 +60,7 @@ def aggregate_pnl(pnl_list):
     })
 
 # Plots portfolio and strategy performance with PD ratios and drawdown shading.
-def plot_strategy_results(data_list, results, title_string="test", save=False):
-    starting_capital = get_initial_capital()
+def plot_strategy_results(data_list, results, title_string="test", save=False, starting_capital=10000):
     nseries = len(data_list)
 
     pfolio_pnl = aggregate_pnl(results["pnlList"])
