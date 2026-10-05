@@ -85,7 +85,7 @@ def get_daily_data_for_date(date, time_frames, pairs):
             # Save daily CSV
             file_path = os.path.join(daily_folder, f"{pair}.csv")
             df.to_csv(file_path, index=False)
-            print(f"Daily data saved at {file_path}")
+            info(f"Daily data saved at {file_path}")
 
             # ----- MERGED YEARLY DATA -----
             merged_folder = os.path.join(year_folder, "merged")
@@ -101,7 +101,7 @@ def get_daily_data_for_date(date, time_frames, pairs):
             merged_df = merged_df.drop_duplicates(subset=["Time"]).sort_values("Time")
             merged_df.to_csv(merged_file, index=False)
 
-            print(f"Merged data updated at {merged_file}")
+            info(f"Merged data updated at {merged_file}")
 
 
 def get_data_from_period(start_date, end_date, time_frames=get_time_frames(), pairs=get_pairs()):
@@ -113,7 +113,7 @@ def get_data_from_period(start_date, end_date, time_frames=get_time_frames(), pa
     current_date = start_date
     while current_date <= end_date:
         date_str = current_date.strftime('%Y-%m-%d')
-        print(f"Fetching data for {date_str}...")
+        info(f"Fetching data for {date_str}...")
         get_daily_data_for_date(date_str, time_frames, pairs)
-        print(f"Completed fetching data for {date_str}.\n")
+        info(f"Completed fetching data for {date_str}.\n")
         current_date += timedelta(days=1)

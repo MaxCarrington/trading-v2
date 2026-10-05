@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import pandas as pd
 import mplfinance as mpf
 
@@ -283,6 +284,121 @@ def plot_candlestick_chart_with_analysis_periods(series, asset, timeframe, start
     fig.savefig(filepath, dpi=300)
     info(f"Chart saved as: {filepath}")
     plt.show(block=False)
+
+def _nearest_index_timestamp(index, ts, max_gap=None):
+    """
+    Return the timestamp in `index` closest to `ts`, or None if `index` is
+    empty / `ts` is missing. If `max_gap` (a pandas Timedelta) is given,
+    a match farther away than that is treated as "no match".
+    """
+    if len(index) == 0 or pd.isna(ts):
+        return None
+    pos = index.get_indexer([ts], method="nearest")[0]
+    if pos == -1:
+        return None
+    nearest = index[pos]
+    if max_gap is not None and abs(nearest - ts) > max_gap:
+        return None
+    return nearest
+
+# Plots a candlestick chart for one asset with each of its trades marked on
+# top: a green up-triangle at the entry of every Buy, a red down-triangle at
+# the entry of every Sell, and (optionally) a black "x" at each exit — so you
+# can see at a glance where a strategy actually traded and in which direction.
+#
+# `data` is an OHLC(V) price series (Mid* columns are converted automatically)
+# covering (at least) the trades' date range. `trades_df` should already be
+# filtered down to the single asset being charted — call this once per asset
+# for a multi-asset run.
+#
+# Pass `output_path` to save inside a specific run's own results folder
+# (e.g. results/<strategy>/<run_id>/figures/<asset>_trades.png); otherwise
+# this falls back to the same CANDLES_DIR convention as the other chart
+# functions in this file.
+def plot_trades_on_candlestick(data, trades_df, asset_name, timeframe, date_label,
+                                show_exits=True, output_path=None):
+    data = convert_midprice_to_ohlc(data) if "MidOpen" in data.columns else data
+    data = data[["Open", "High", "Low", "Close"]].dropna().sort_index()
+
+    trades_df = trades_df.copy()
+    if trades_df.empty:
+        warning(f"No trades to plot for {asset_name} — chart will show price only.", __file__)
+    else:
+        trades_df["entry_date"] = pd.to_datetime(trades_df["entry_date"])
+        trades_df["exit_date"] = pd.to_datetime(trades_df["exit_date"])
+
+    buy_markers = pd.Series(np.nan, index=data.index)
+    sell_markers = pd.Series(np.nan, index=data.index)
+    exit_markers = pd.Series(np.nan, index=data.index)
+
+    # get_indexer(method="nearest") always returns *some* bar, even for a
+    # trade date far outside this chart's range — it would otherwise get
+    # silently snapped onto the nearest edge. Cap how far a match is allowed
+    # to be from the actual trade date, based on this series' own bar spacing.
+    if len(data.index) >= 2:
+        bar_interval = pd.Series(data.index).diff().median()
+        max_gap = bar_interval * 1.5 if pd.notna(bar_interval) else None
+    else:
+        max_gap = None
+
+    unmatched = 0
+    for _, trade in trades_df.iterrows():
+        entry_ts = _nearest_index_timestamp(data.index, trade["entry_date"], max_gap)
+        if entry_ts is None:
+            unmatched += 1
+            continue
+
+        if trade["trade_type"] == "Buy":
+            buy_markers.loc[entry_ts] = trade["entry_price"]
+        elif trade["trade_type"] == "Sell":
+            sell_markers.loc[entry_ts] = trade["entry_price"]
+        else:
+            warning(
+                f"Unrecognised trade_type {trade['trade_type']!r} for "
+                f"trade_id={trade.get('trade_id')} — no marker plotted.", __file__
+            )
+
+        if show_exits and pd.notna(trade.get("exit_date")):
+            exit_ts = _nearest_index_timestamp(data.index, trade["exit_date"], max_gap)
+            if exit_ts is not None:
+                exit_markers.loc[exit_ts] = trade["exit_price"]
+
+    if unmatched:
+        warning(
+            f"{unmatched} trade(s) for {asset_name} had no matching bar in "
+            f"the price series (outside its date range?) — not plotted.", __file__
+        )
+
+    n_buy = int(buy_markers.notna().sum())
+    n_sell = int(sell_markers.notna().sum())
+    info(f"Plotting {n_buy} Buy and {n_sell} Sell trade marker(s) for {asset_name} {timeframe} ({date_label})")
+
+    apds = []
+    if buy_markers.notna().any():
+        apds.append(mpf.make_addplot(buy_markers, type="scatter", marker="^", markersize=100, color="green"))
+    if sell_markers.notna().any():
+        apds.append(mpf.make_addplot(sell_markers, type="scatter", marker="v", markersize=100, color="red"))
+    if show_exits and exit_markers.notna().any():
+        apds.append(mpf.make_addplot(exit_markers, type="scatter", marker="x", markersize=60, color="black"))
+
+    title = f"{asset_name} {timeframe} Candlestick Chart with Trades ({date_label})"
+    plot_kwargs = dict(type="candle", style="charles", title=title, figsize=(16, 8), returnfig=True)
+    if apds:
+        plot_kwargs["addplot"] = apds
+
+    fig, axlist = mpf.plot(data, **plot_kwargs)
+
+    if output_path is None:
+        folder = os.path.join(constants.CANDLES_DIR, asset_name, timeframe, date_label, "WITH_TRADES")
+        os.makedirs(folder, exist_ok=True)
+        output_path = os.path.join(folder, f"{asset_name}_{timeframe}_{date_label}_trades.png")
+    else:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    info(f"Chart saved as: {output_path}")
+
+    return fig, axlist
 
 def plot_volatiltiy_momentum_correlation_scatter(df, filepath, filename):
     # Compute correlations with price_diff

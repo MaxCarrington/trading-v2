@@ -16,12 +16,13 @@ import pandas as pd
 from trading.data.data_analysis.momentum_analysis import get_momentum_statistics, get_momentum_direction, generate_donchian_breakout
 from trading.data.data_analysis.analysis import is_momentum
 from trading.data.data_analysis.volatility_analysis import get_volatility_statistics
-from trading.indicators.average_true_range import calculate_rolling_atr
+from trading.indicators.average_true_range import update_atr_incremental
 from trading.risk_management.trade_record_management import TradeRecords
 from trading.risk_management.stop_losses import compute_stop_loss
 from trading.risk_management.take_profit import compute_take_profit
 from trading.indicators.moving_averages import calculate_moving_average
 from trading.indicators.relative_strength_index import calculate_rsi, is_rsi_overbought, is_rsi_oversold
+from trading.utils.logger import info, warning, error
 
 # Returns the trade size based on the position-sizing config.
 #
@@ -34,7 +35,7 @@ from trading.indicators.relative_strength_index import calculate_rsi, is_rsi_ove
 #    For "risk_based":
 #        size = (equity * risk_per_trade) / sl_distance
 #    so a stop-out at the configured SL costs exactly `risk_per_trade` of equity.
-def _compute_pos_size(params, info, sl_distance):
+def _compute_pos_size(params, information, sl_distance):
     sizing_type = params.get("position_size_type", "fixed")
 
     if sizing_type == "fixed":
@@ -45,7 +46,7 @@ def _compute_pos_size(params, info, sl_distance):
             raise ValueError(
                 f"risk_based sizing requires a positive SL distance, got {sl_distance!r}"
             )
-        equity = info.get("netWorth") or info.get("balance") or 0.0
+        equity = information.get("netWorth") or information.get("balance") or 0.0
         if equity <= 0:
             return 0.0   # no trading on zero/negative equity
         risk_per_trade = params.get("risk_per_trade", 0.005)
@@ -72,7 +73,7 @@ def _detect_signal(store, symbol, params, timeframe, date, momentum_score_thresh
         store, should_trade, score, vol_stats = analyse_momentum(
             store, symbol, params, timeframe, date,
             momentum_threshold=momentum_score_thresh,
-            trade_high_volatility=False,
+            trade_high_volatility=True,
             trade_w_volatility=True,
         )
         if should_trade:
@@ -111,15 +112,7 @@ def _stub_volatility_stats(df):
         "stddev":         pd.Series([0.0], index=[df.index[-1]] if len(df) else []),
     }
 
-def momentum_strategy_v1_3(
-    store,
-    new_row_list,
-    current_pos,
-    info,
-    params,
-    pos_size=1,
-    minimum_data_points=100
-):
+def momentum_strategy_v1_3(store, new_row_list, current_pos, account_info, params, pos_size=1, minimum_data_points=100):
     # Extract global values
     series = params["pairs"]
 
@@ -128,7 +121,7 @@ def momentum_strategy_v1_3(
         store = initialise_store(series, params["momentum_lookback"])
 
     # Update store with the *previous* bar per series
-    store = update_store(store, new_row_list, series)
+    store = update_store(store, new_row_list, series, atr_lookback=params.get("atr_lookback", 14))
     num_series = len(series)
     market      = [0] * num_series
     limit1      = [0] * num_series
@@ -170,14 +163,8 @@ def momentum_strategy_v1_3(
             # 3. Calculate indicators for this symbol
             close_series = store["ohlcv"][symbol]["Close"]
             ma_value = calculate_moving_average(ma_type, close_series, ma_lookback).iloc[-1]
-            df = store["ohlcv"][symbol]
-            atr_lookback = params.get("atr_lookback", 14)
-            atr_series = calculate_rolling_atr(df, lookback=atr_lookback)
-
-            # Store the latest ATR value so SL/TP functions can reach it
-            if "atr_value" not in store:
-                store["atr_value"] = {}
-            store["atr_value"][symbol] = atr_series.iloc[-1]
+            # ATR is maintained incrementally in update_store() (O(1)/bar) —
+            # store["atr_value"][symbol] is already current for this bar.
             rsi_value = calculate_rsi(close_series, rsi_lookback).iloc[-1]
 
             store["pending_rsi_value"][symbol] = rsi_value
@@ -208,6 +195,7 @@ def momentum_strategy_v1_3(
                     period_volatility_score=store["pending_period_volatility_score"][symbol],
                     stddev_volatility=store["pending_stddev_volatility_score"][symbol],
                     rsi= store["pending_rsi_value"][symbol],
+                    atr=store.get("atr_value", {}).get(symbol),
                     overbought_thresh=overbought_thresh,
                     oversold_thresh=oversold_thresh,
                     moving_average_type= ma_type,
@@ -221,7 +209,6 @@ def momentum_strategy_v1_3(
                 store["pending_normalised_score"][symbol] = 0
                 store["pending_pos_size"][symbol] = 0.0
 
-            # --- Phase 2: Detect new signals and mark pending trade for tomorrow ---
             # --- Phase 2: Detect new signals using the configured signal_type ---
             store, should_trade, direction, normalised_score, volatility_stats = _detect_signal(
                 store, symbol, params, timeframe, date,
@@ -244,7 +231,7 @@ def momentum_strategy_v1_3(
                 )
                 sl_distance = abs(estimated_entry - estimated_sl)
                 trade_size = (
-                    _compute_pos_size(params, info, sl_distance)
+                    _compute_pos_size(params, account_info, sl_distance)
                     if not already_in_position else 0.0
                 )
 
@@ -261,10 +248,11 @@ def momentum_strategy_v1_3(
                         and threshold_ok
                         and direction != 0
                 )
+                rsi_overbought = rsi_value >= overbought_thresh
+                rsi_oversold = rsi_value <= oversold_thresh
 
-                if valid_signal and direction == 1:
-                    print(
-                        f"BUY  SIGNAL  {row['Time']}  {symbol}  Score={normalised_score:.2f}  size={trade_size:.2f}  equity={info.get('netWorth', 0):.2f}")
+                if valid_signal and direction == 1:# and rsi_overbought:
+                    info(f"BUY  SIGNAL  {row['Time']}  {symbol}  Score={normalised_score:.2f}  size={trade_size:.2f} rsi={rsi_value:.2f} equity={account_info.get('netWorth', 0):.2f}")
                     market[i] += trade_size
                     store["pending_trades"][symbol] = 1
                     store["pending_pos_size"][symbol] = trade_size
@@ -274,17 +262,17 @@ def momentum_strategy_v1_3(
                     store["pending_period_volatility_score"][symbol] = entry_volatility_period
                     store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
 
-                elif valid_signal and direction == -1:
-                    print(
-                        f"SELL SIGNAL  {row['Time']}  {symbol}  Score={normalised_score:.2f}  size={trade_size:.2f}  equity={info.get('netWorth', 0):.2f}")
-                    market[i] -= trade_size
-                    store["pending_trades"][symbol] = -1
-                    store["pending_pos_size"][symbol] = trade_size
-                    store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
-                    store["pending_normalised_score"][symbol] = normalised_score
-                    store["pending_combined_volatility_score"][symbol] = entry_volatility_score
-                    store["pending_period_volatility_score"][symbol] = entry_volatility_period
-                    store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
+                # elif valid_signal and direction == -1:#and rsi_oversold:
+                #     info(
+                #         f"SELL SIGNAL  {row['Time']}  {symbol}  Score={normalised_score:.2f}  size={trade_size:.2f} rsi={rsi_value:.2f} equity={account_info.get('netWorth', 0):.2f}")
+                #     market[i] -= trade_size
+                #     store["pending_trades"][symbol] = -1
+                #     store["pending_pos_size"][symbol] = trade_size
+                #     store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
+                #     store["pending_normalised_score"][symbol] = normalised_score
+                #     store["pending_combined_volatility_score"][symbol] = entry_volatility_score
+                #     store["pending_period_volatility_score"][symbol] = entry_volatility_period
+                #     store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
 
                 else:
                     store["pending_trades"][symbol] = 0
@@ -317,9 +305,9 @@ def analyse_momentum(store, symbol, params, timeframe, start_date, end_date=None
     df = store["ohlcv"][symbol]
     momentum_stats = get_momentum_statistics(df, params['momentum_len_thresh'][symbol], symbol, timeframe,start_date, end_date)
     store["momentum_score"][symbol] = momentum_stats["normalised_score"]
-
+    #info(f"Normalised Momentum Score: {momentum_stats["normalised_score"]}")
     volatility_stats = get_volatility_statistics(df, params["lookback"][symbol], symbol, timeframe, start_date, end_date)
-
+    #info(f"Normalised Volatility Score: {volatility_stats['combined_score'].iloc[-1]:.2}")
     momentum_found, normalised_score = is_momentum(momentum_stats, volatility_stats, momentum_threshold, trade_high_volatility=trade_high_volatility, trade_w_volatility=trade_w_volatility)
 
     return store, momentum_found, normalised_score, volatility_stats
@@ -342,8 +330,8 @@ def initialise_store(series, default_lookback=20):
         "volatility_score": {s: 0 for s in series},
         "current_momentum_periods": {s: [] for s in series},
         "previous_momentum_periods": {s: [] for s in series},
-        "pending_normalised_score": {s: [] for s in series},
-        "pending_trades": {s: [] for s in series},
+        "pending_normalised_score": {s: 0.0 for s in series},
+        "pending_trades": {s: 0.0 for s in series},
         "pending_pos_size": {s: 0.0 for s in series},
         "pending_entry_date": {s: None for s in series},
         "pending_combined_volatility_score": {s: 0.0 for s in series},
@@ -351,14 +339,26 @@ def initialise_store(series, default_lookback=20):
         "pending_stddev_volatility_score": {s: 0.0 for s in series},
         "pending_rsi_value": {s: 0.0 for s in series},
         "pending_moving_average_value": {s: 0.0 for s in series},
+        # Incremental ATR state (see update_atr_incremental) — kept separate
+        # from momentum_score/volatility_score etc. since it's updated on
+        # every bar for every symbol, not just once should_trade fires.
+        "atr_value": {s: None for s in series},
+        "atr_prev_close": {s: None for s in series},
+        "atr_tr_buffer": {s: [] for s in series},
     }
 
-def update_store(store, new_row_list, series):
+def update_store(store, new_row_list, series, atr_lookback=14):
     store["iter"] += 1
     for s, row in zip(series, new_row_list): # Combines the series name with the new row list ohlcv values
         t = row["Time"]  # timestamp for this new OHLCV bar
         store["ohlcv"][s].loc[t] = [
             row["Open"], row["High"], row["Low"], row["Close"], row["Volume"]
         ]
+        # Must run on every bar (not just once should_trade fires) so the
+        # seed/smoothing state stays in sync with what recomputing ATR from
+        # the full history would have produced.
+        store = update_atr_incremental(
+            store, s, row["High"], row["Low"], row["Close"], lookback=atr_lookback
+        )
 
     return store

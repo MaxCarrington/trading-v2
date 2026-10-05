@@ -32,7 +32,7 @@ def download_stocks(tickers_arr, start_date, end_date, time_frame):
     for ticker in tickers_arr:
         try:
             validate_window(start_date, interval)
-            print(f"Downloading {ticker} data from {start_date} to {end_date} with interval {interval}...") 
+            info(f"Downloading {ticker} data from {start_date} to {end_date} with interval {interval}...") 
             data = yf.download(ticker, start=start_date, end=end_date, interval=interval)
             if not data.empty:
                 folder_path = get_stock_dir("yahoo", ticker, time_frame, start_date)
@@ -43,22 +43,22 @@ def download_stocks(tickers_arr, start_date, end_date, time_frame):
                 file_path = os.path.join(folder_path, f"{ticker}.csv")
                 data.to_csv(file_path)
 
-                print(f"Saved {ticker} data to {file_path}")
+                info(f"Saved {ticker} data to {file_path}")
             else:
-                print(f"No data for {ticker}")
+                info(f"No data for {ticker}")
         except Exception as e:
-            print(f"Error downloading {ticker}: {e}")
+            info(f"Error downloading {ticker}: {e}")
 
 # Downloads a list of stocks over a list of years
 def download_years(years_arr, tickers_arr, time_frame):
     for x in range(len(years_arr) - 1):
         try:
-            print(f"Downloading data from: {years_arr[x]}...")
+            info(f"Downloading data from: {years_arr[x]}...")
             start = years_arr[x]
             end = years_arr[x+1]
             download_stocks(tickers_arr, start, end, time_frame)
         except Exception as e:
-            print(f"Error downloading data from: {years_arr[x]}: {e}")
+            info(f"Error downloading data from: {years_arr[x]}: {e}")
 
 
 

@@ -27,7 +27,7 @@ pipeline {
         // Stage 1: Verify Python is available and install project dependencies
         stage('Setup') {
             steps {
-                // Print Python version as a sanity check
+                // info Python version as a sanity check
                 sh '${PYTHON} --version'
 
                 // Install the project and its dev dependencies in editable mode
@@ -80,7 +80,7 @@ pipeline {
                         echo "Expected file not found: $EXPECTED"
                         echo "(this may be normal on a weekend)"
                     else
-                        # File found — print confirmation and line count as a basic data check
+                        # File found — info confirmation and line count as a basic data check
                         echo "Verified: $EXPECTED"
                         wc -l "$EXPECTED"
                     fi

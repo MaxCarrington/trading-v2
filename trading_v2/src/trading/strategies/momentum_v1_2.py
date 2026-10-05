@@ -27,7 +27,7 @@ def momentum_strategy_v1_2(
     store,
     new_row_list,
     current_pos,
-    info,
+    account_info,
     params,
     prompts=False,
     use_limit_orders=True,
@@ -124,6 +124,7 @@ def momentum_strategy_v1_2(
                     period_volatility_score=store["pending_period_volatility_score"][symbol],
                     stddev_volatility=store["pending_stddev_volatility_score"][symbol],
                     rsi= store["pending_rsi_value"][symbol],
+                    atr=store.get("atr_value", {}).get(symbol),
                     overbought_thresh=overbought_thresh,
                     oversold_thresh=oversold_thresh,
                     moving_average_type= ma_type,
@@ -156,7 +157,7 @@ def momentum_strategy_v1_2(
                     entry_volatility_period = volatility_stats["period_vol"][-1]  # latest categorical label
                     entry_volatility_stddev = volatility_stats["stddev"].iloc[-1]  # latest stddev value
                     if direction == 1 and normalised_score > momentum_score_thresh: # and is_rsi_oversold(rsi_value, oversold_thresh) and row["Open"] < ma_value:
-                        print(f"BUY SIGNAL. Normalised score: {normalised_score}")
+                        info(f"BUY SIGNAL. Normalised score: {normalised_score}")
                         market[i] += pos_size
                         store["pending_trades"][symbol] = 1
                         store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
@@ -167,7 +168,7 @@ def momentum_strategy_v1_2(
                         store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
 
                     elif direction == -1 and normalised_score > momentum_score_thresh: # and is_rsi_overbought(rsi_value, overbought_thresh) and row["Open"] > ma_value:
-                        print(f"SELL SIGNAL. Normalised score: {normalised_score}")
+                        info(f"SELL SIGNAL. Normalised score: {normalised_score}")
                         market[i] -= pos_size
                         store["pending_trades"][symbol] = -1
                         store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)

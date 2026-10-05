@@ -26,7 +26,7 @@ def to_log_returns(series):
 # # Function to return all CSV filenames in the directory
 # def get_filenames(directory):
 #     # List all files in the directory and filter for CSV files
-#     print(directory)
+#     info(directory)
 #     return [f for f in os.listdir(directory) if f.endswith('.csv')]
 
 # Reads a CSV and converts the 'Time' column to datetime, removing any "+00:00" timezone suffix.
@@ -58,7 +58,7 @@ def preprocess_csv(filename):
 #     # Get all filenames in the directory
 #     filenames = get_filenames(directory)
 #
-#     print(f"Read {len(filenames)} series from {directory}")
+#     info(f"Read {len(filenames)} series from {directory}")
 #     # Apply read_file to each filename
 #     return [read_file(os.path.join(directory, fname)) for fname in filenames]
 

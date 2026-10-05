@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.stats import pearsonr
+from scipy.stats import t as student_t
 
 from trading.data.stat_tests.augmented_dickey_fuller import perform_adf_test
 from trading.utils.data_manipulation import to_log_returns
@@ -7,7 +7,7 @@ from trading.data.stat_tests.hurst_exponent import calculate_hurst_exponent
 from trading.utils.logger import start_log, info, warning, error
 
 # Get the momentum statistical information from analysis
-def get_momentum_statistics(series, p_val_len_thresh, asset, time_frame, start_date, end_date, print_output=False):
+def get_momentum_statistics(series, p_val_len_thresh, asset, time_frame, start_date, end_date, info_output=False):
     log_returns = to_log_returns(series["Close"].dropna().tail(75))
     # find the optimal lookback window with strongest correlation signal
     rolling_correlations = calc_optimal_window_size(log_returns)
@@ -15,7 +15,7 @@ def get_momentum_statistics(series, p_val_len_thresh, asset, time_frame, start_d
     optimal_corrs = rolling_correlations.get('correlations', [])
     # classify regime (Momentum/Mean-Reversion/None) based on correlation outcomes
     momentum_indication = check_len_for_momentum(p_val_len_thresh, {'correlations': optimal_corrs})
-    #print(f"momentum indication:{momentum_indication}")
+    #info(f"momentum indication:{momentum_indication}")
 
     normalised_score, suitability = generate_momentum_score(momentum_indication, rolling_correlations)
     momentum_stats = {
@@ -30,8 +30,8 @@ def get_momentum_statistics(series, p_val_len_thresh, asset, time_frame, start_d
         'start_date': start_date,
         'end_date': end_date,
     }
-    if print_output:
-        print_momentum_analysis(momentum_stats)
+    if info_output:
+        info_momentum_analysis(momentum_stats)
     return momentum_stats
 
 # Generates a momentum score
@@ -52,31 +52,56 @@ def generate_momentum_score(momentum_indication, rolling_correlations):
     return normalised_score, suitability
 
 # Calculate the correlation between past and future returns of given (rolling) windows of a time series
-# and the dates of each window
+# and the dates of each window.
+#
+# Vectorized equivalent of the original per-position pearsonr() loop: computes
+# Pearson r for every window position at once via a sliding-window view, then
+# gets the two-sided p-value from its closed-form relationship to the
+# Student's t distribution (the same formula pearsonr() uses internally),
+# rather than calling pearsonr() hundreds of times per call. Verified to
+# produce identical correlations/dates to the original loop-based version —
+# this function runs on every bar of a live backtest, and the loop version
+# was the single biggest per-bar cost in the whole strategy.
 def calculate_rolling_correlations(series, window_size, significance_level=0.05):
     log_returns = series.dropna()
 
     total_length = len(log_returns)
     window_size = min(window_size, total_length // 2)
 
-    correlations = []
-    start_date_past = []
-    start_date_future = []
+    empty = {'correlations': [], 'start_date_past': [], 'start_date_future': []}
+    # Pearson correlation / its t-distribution p-value need at least 2 points
+    # per window and at least 1 degree of freedom (n - 2 > 0).
+    if window_size < 3:
+        return empty
 
-    for i in range(total_length - 2 * window_size + 1):
-        past_returns = log_returns.iloc[i: i + window_size]
-        future_returns = log_returns.iloc[i + window_size: i + 2 * window_size]
+    window_count = total_length - 2 * window_size + 1
+    if window_count <= 0:
+        return empty
 
-        if len(past_returns) == len(future_returns):
-            corr, p_value = pearsonr(past_returns, future_returns)
-            if not np.isnan(corr) and p_value < significance_level:
-                correlations.append(corr)
-                start_date_past.append(past_returns.index[0])
-                start_date_future.append(future_returns.index[0])
+    values = log_returns.to_numpy(dtype=float)
+    index = log_returns.index
+
+    # swv[j] == values[j : j + window_size]; past windows start at i,
+    # future windows start at i + window_size, both drawn from the same view.
+    swv = np.lib.stride_tricks.sliding_window_view(values, window_size)
+    past = swv[:window_count]
+    future = swv[window_size: window_size + window_count]
+
+    past_c = past - past.mean(axis=1, keepdims=True)
+    future_c = future - future.mean(axis=1, keepdims=True)
+    denom = np.sqrt((past_c ** 2).sum(axis=1) * (future_c ** 2).sum(axis=1))
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        r = (past_c * future_c).sum(axis=1) / denom
+        t_stat = r * np.sqrt((window_size - 2) / (1 - r ** 2))
+    p_values = 2 * student_t.sf(np.abs(t_stat), df=window_size - 2)
+
+    valid = ~np.isnan(r) & (p_values < significance_level)
+
     return {
-        'correlations': correlations,
-        'start_date_past': start_date_past,
-        'start_date_future': start_date_future
+        'correlations': r[valid].tolist(),
+        'start_date_past': list(index[:window_count][valid]),
+        'start_date_future': list(index[window_size: window_size + window_count][valid]),
     }
 
 # Finds the optimal rolling window size that yields the highest significant correlation
@@ -160,8 +185,8 @@ def statistical_score(series):
 
     return score
 
-# Neatly prints the output from get_momentum_statistics
-def print_momentum_analysis(stats_dict):
+# Neatly infos the output from get_momentum_statistics
+def info_momentum_analysis(stats_dict):
     info("\n\n\n📊 Momentum Diagnostic Summary")
     info(f"Asset: {stats_dict.get('asset')}")
     info(f"Start Date: {stats_dict.get('start_date')}")

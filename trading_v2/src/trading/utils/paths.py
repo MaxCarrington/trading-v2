@@ -1,4 +1,5 @@
-import os 
+import os
+from datetime import datetime
 import pandas as pd
 import trading.utils.constants as constants
 
@@ -26,6 +27,21 @@ def get_raw_data_dir():
 # Get the logs directory
 def get_logs_dir():
     return constants.LOGS_DIR
+
+# Get the results directory (root of all per-run backtest output)
+def get_results_dir():
+    return constants.RESULTS_DIR
+
+# Create (if needed) and return the folder for a single backtest run:
+# results/<strategy_name>/<run_id>/
+# Everything produced by that run — trades.csv, config.yaml, metrics.json,
+# report.html, figures/ — lives together in this one folder.
+def create_run_dir(strategy_name, run_id=None):
+    if run_id is None:
+        run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_dir = os.path.join(constants.RESULTS_DIR, strategy_name, run_id)
+    os.makedirs(run_dir, exist_ok=True)
+    return run_dir
 
 # Get the scripts directory
 def get_scripts_dir():
@@ -97,9 +113,9 @@ def get_time_series_period_df(data_path, start_date, end_date):
     .rename(columns={"Price": "Date"})   # clearer column name
     .set_index("Date")                   # makes date slicing ultra-fast
     )
-    print(df)
-    print(start_date)
-    print(end_date)
+    info(df)
+    info(start_date)
+    info(end_date)
     return df.loc[start_date:end_date]                 # vectorised slice, keeps every column
 
 # Saves content to a file at a specific directory
@@ -114,5 +130,5 @@ def save_to_file(dir, file_name, content):
     with open(file_path, 'w') as f:
         f.write(content)
 
-    print(f"File saved to: {file_path}")
+    info(f"File saved to: {file_path}")
 

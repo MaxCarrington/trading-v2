@@ -13,7 +13,7 @@ percentage_map = {
 }
 
 #Performs Augmented Dickey-Fuller test and checks stationarity against a specified significance level.
-def perform_adf_test(series, percentage_level=0.05, print_output=False):
+def perform_adf_test(series, percentage_level=0.05, info_output=False):
     clean_series = to_log_returns(series.dropna())
     result = adfuller(clean_series, autolag='AIC')
 
@@ -27,8 +27,8 @@ def perform_adf_test(series, percentage_level=0.05, print_output=False):
 
     is_stationary = adf_statistic < critical_value and p_value < percentage_level
 
-    if print_output:
-        print(f"{'Stationary' if is_stationary else 'Non-stationary'} at {crit_key} level")
+    if info_output:
+        info(f"{'Stationary' if is_stationary else 'Non-stationary'} at {crit_key} level")
 
     return {
         'adf_statistic': adf_statistic,

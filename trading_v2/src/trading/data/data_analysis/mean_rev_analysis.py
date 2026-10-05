@@ -14,7 +14,7 @@ from trading.utils.logger import start_log, info, warning, error
 #   - Score each time series out of 100 based on above
 #   - If score is higher than the set amount, the time series will be used for
 #     mean reversion
-def get_series_mean_rev_stats(series, asset, time_frame, start_date, end_date, threshold=0.05, print_output=False):
+def get_series_mean_rev_stats(series, asset, time_frame, start_date, end_date, threshold=0.05, info_output=False):
     close = series["Close"]
     score = 0
     consistency = 0
@@ -81,8 +81,8 @@ def get_series_mean_rev_stats(series, asset, time_frame, start_date, end_date, t
         'start_date': start_date,
         'end_date': end_date,
     }
-    if print_output:
-        print_mean_rev_analysis(mean_rev_stats)
+    if info_output:
+        info_mean_rev_analysis(mean_rev_stats)
 
     return mean_rev_stats
 
@@ -177,8 +177,8 @@ def calc_half_life_score(duration_label):
     }
     return scores.get(duration_label, None)
 
-# Prints mean reversion statistics in a readable manner
-def print_mean_rev_analysis(stats):
+# infos mean reversion statistics in a readable manner
+def info_mean_rev_analysis(stats):
     attrs = stats['attributes']
 
     info(f"\n\n\n📊 **Mean Reversion Stats**")

@@ -15,23 +15,23 @@ def calculate_hurst_exponent(series):
     log_returns = np.log(clean_series).diff().dropna()
 
     if len(clean_series) < 100:
-        print("Skipping Hurst calculation: series too short (<100)")
+        info("Skipping Hurst calculation: series too short (<100)")
         h = np.nan
     else:
         try:
             h, _, _ = compute_Hc(clean_series, kind='price', simplified=True)
         except Exception as e:
-            print(f"Error computing Hurst exponent: {e}")
+            info(f"Error computing Hurst exponent: {e}")
             h = np.nan
 
     if np.isnan(h):
         try:
             h = nolds.hurst_rs(log_returns, fit='poly')  # 'ransac' not supported here
         except ImportError:
-            print("nolds not installed, cannot compute fallback Hurst exponent.")
+            info("nolds not installed, cannot compute fallback Hurst exponent.")
             return {'hurst': None, 'classification': 'undefined'}
         except Exception as e:
-            print(f"Fallback Hurst RS failed: {e}")
+            info(f"Fallback Hurst RS failed: {e}")
             return {'hurst': None, 'classification': 'undefined'}
 
     if h < 0.45:

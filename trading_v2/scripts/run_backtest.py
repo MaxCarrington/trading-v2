@@ -1,27 +1,25 @@
-import sys, os
+import sys, os, shutil
 import pandas as pd
-from datetime import datetime
-import math
 import trading.utils.constants as constants
 from trading.utils.config import load_config
+from trading.utils.paths import create_run_dir
 from trading.strategies.strategy_loader import get_strategy, get_params
-from trading.utils.general_utils import load_mid_ohlcv, load_mid_ohlcv_range
+from trading.utils.general_utils import load_mid_ohlcv
 from trading.utils.logger import start_log, info, warning, error
-from trading.utils.data_manipulation import get_forex_data, create_asset_dictonary
+from trading.backtesting.metrics_report import generate_report
 #--------------------------------------------------------------------------------
 # Capture command-line arguments
 # Argument 0 is the script name
 # Argument 1 is --config
-# Argument 2 is the config file path (e.g. configs/backtest_smoke.yaml)
-# Run with: python scripts/run_backtest.py --config configs/backtest_smoke.yaml
+# Argument 2 is the config FILENAME only, relative to the configs/ folder
+# (load_config() joins it onto CONFIGS_DIR itself — don't include "configs/").
+# e.g. backtest_smoke.yaml, NOT configs/backtest_smoke.yaml
+# Run with: python scripts/run_backtest.py --config backtest_smoke.yaml
 #--------------------------------------------------------------------------------
 
 # Pick the provided path if present, otherwise use default
 config_path = sys.argv[2] if len(sys.argv) > 2 and sys.argv[1] == "--config" else constants.CONFIG_DEFAULT
 config = load_config(config_path)
-
-# Set up logging
-#start_log(config_path, config)
 
 # Calculates slippage. Current implementation takes the overnight gap multiplied by a slippage multiplier - This can be optimsied further
 def calc_slippage(prev_close, curr_open, slippage_multiplier):
@@ -69,6 +67,7 @@ def find_pnl(prices, old_pos, market_order,
 
     # --- Market order execution at next open with slippage cost at current open ---
     if market_order != 0:
+        info(f"Trade type is MARKET ORDER with value: {market_order}")
         slippage = calc_slippage(prices['prev_close'], prices['curr_open'], slippage_multiplier)
         pnl += market_order * (prices['next_open'] - prices['curr_open']) - abs(market_order) * slippage
         # Cash impact: executed “at current open” with slippage (R model)
@@ -119,10 +118,12 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
 
         # 2) Compute info (no future fields)
         portfolio_net_worth = balance + sum(current_pos[j] * curr_rows[j]['Open'] for j in range(num_series))
-        info = {"balance": balance, "netWorth": portfolio_net_worth}
+        # NOTE: named state_info (not "info") so it doesn't shadow the
+        # trading.utils.logger.info() function used for logging below.
+        state_info = {"balance": balance, "netWorth": portfolio_net_worth}
 
         # 3) Get orders — strategy sees ONLY current data (no lookahead possible)
-        orders = strategy_function(store, new_row_list, current_pos, info, params)
+        orders = strategy_function(store, new_row_list, current_pos, state_info, params)
         market_orders = orders["marketOrders"]  # list len=num_series
         limit_orders_1 = orders.get("limitOrders1", [0] * num_series)
         limit_prices_1 = orders.get("limitPrices1", [0] * num_series)
@@ -188,7 +189,7 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
         portfolio_net_worth_list.append(net_worth)
 
         if net_worth <= 0:
-            print(f"Bankrupt on period {i + 1}")
+            warning(f"Bankrupt on period {i + 1}", __file__)
             # Liquidate as if final day using today's prev/curr (i-1, i)
             exit_pnls = []
             exit_values = []
@@ -230,33 +231,26 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
         pnl_dfs.append(df)
 
     k = round(100 * pos_days / max(1, (num_periods - 2)))
-    # --- Collect and export trade records ---
+    # --- Collect trade records ---
+    # Writing these to disk (and generating the metrics report) is the
+    # caller's job — see run_backtest() below, which owns the run folder.
     all_trades = []
     for symbol, trade_rec_obj in store["trade_records"].items():
         df = trade_rec_obj.trade_records.copy()
         all_trades.append(df)
 
-    if all_trades:
-        trades_df = pd.concat(all_trades, ignore_index=True)
-        print(trades_df.tail())  # print last few trades neatly
-
-        # Optional: export to CSV
-        trades_csv_path = os.path.join(
-            constants.PROJECT_ROOT,
-            "results",
-            "backtest_results",
-            strategy_name,
-            datetime.now().strftime('%Y%m%d'),
-            f"trade_records_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        )
-
-        os.makedirs(os.path.dirname(trades_csv_path), exist_ok=True)
-        trades_df.to_csv(trades_csv_path, index=False)
-        print(f"Trade records exported to {trades_csv_path}")
+    trades_df = pd.concat(all_trades, ignore_index=True) if all_trades else pd.DataFrame()
+    if not trades_df.empty:
+        info(f"Last trades:\n{trades_df.tail().to_string()}")
     else:
-        print("No trade records generated.")
+        warning("No trade records generated.", __file__)
 
-    return {"pnlList": pnl_dfs, "netWorthList": portfolio_net_worth_list, "k": k}
+    return {
+        "pnlList": pnl_dfs,
+        "netWorthList": portfolio_net_worth_list,
+        "k": k,
+        "trades_df": trades_df,
+    }
 
 def close_out(prices, pos, slippage_multiplier):
     slippage = calc_slippage(prices['prev_close'], prices['curr_open'], slippage_multiplier)
@@ -357,52 +351,82 @@ def _align_dataframes(dfs):
 
     return aligned
 
-def run_backtest(strategy, params):
-    data_list = []
-    for pair in params["pairs"]:
-        series = _load_series_for_pair(pair, params)  # <-- your existing branching, extracted
-        data_list.append(series)
-    data_list = _align_dataframes(data_list)
-    # 2. BACKTEST once, on the whole list
-    slippage_multiplier = 0.2
-    results = backtest_live(
-        data_list=data_list,
-        strategy_function=strategy,
-        params=params,
-        slippage_multiplier=slippage_multiplier,
-        strategy_name=params["strategy_name"],
-    )
+def run_backtest(strategy, params, config_path=None):
+    # Every run gets its own folder — and its own run.log — from the very
+    # start, so a crash during data loading / simulation still gets captured
+    # inside that run's folder rather than only going to the console.
+    run_dir = create_run_dir(params["strategy_name"])
+    start_log(log_dir=run_dir, filename="run.log")
+    info(f"Starting backtest run. strategy={params.get('strategy_name')} run_dir={run_dir}")
+
+    # Snapshot the config alongside everything else this run produces.
+    if config_path:
+        # Same resolution load_config() uses internally: os.path.join discards
+        # CONFIGS_DIR if config_path is already absolute, so this works either way.
+        resolved_config_path = os.path.join(constants.CONFIGS_DIR, config_path)
+        if os.path.exists(resolved_config_path):
+            shutil.copy(resolved_config_path, os.path.join(run_dir, "config.yaml"))
+            info(f"Config snapshotted to {os.path.join(run_dir, 'config.yaml')}")
+        else:
+            warning(f"Config file not found for snapshotting: {resolved_config_path}", __file__)
+
+    try:
+        data_list = []
+        for pair in params["pairs"]:
+            series = _load_series_for_pair(pair, params)  # <-- your existing branching, extracted
+            data_list.append(series)
+        data_list = _align_dataframes(data_list)
+        # 2. BACKTEST once, on the whole list
+        slippage_multiplier = 0.2
+        results = backtest_live(
+            data_list=data_list,
+            strategy_function=strategy,
+            params=params,
+            slippage_multiplier=slippage_multiplier,
+            strategy_name=params["strategy_name"],
+        )
+    except Exception as e:
+        error(f"Backtest run failed: {e}", __file__)
+        raise
 
     # 3. INSPECT
     networth_vec = results["netWorthList"]
     k_ratio = results["k"]
     pnl_dfs = results["pnlList"]
 
-    print("\n" + "=" * 60)
-    print("PER-PAIR P&L")
-    print("=" * 60)
+    info("=" * 60)
+    info("PER-PAIR P&L")
+    info("=" * 60)
     for pair, pnl_df in zip(params["pairs"], pnl_dfs):
         final_cum = pnl_df["CumPnL"].iloc[-1]
         n_winning = (pnl_df["DailyPnL"] > 0).sum()
         n_losing = (pnl_df["DailyPnL"] < 0).sum()
-        print(f"\n{pair}:")
-        print(f"  Final CumPnL: {final_cum:.2f}")
-        print(f"  Winning days: {n_winning}, Losing days: {n_losing}")
-        print(f"  Last 5 rows:")
-        print(pnl_df.tail().to_string())
+        info(f"{pair}: Final CumPnL={final_cum:.2f}, Winning days={n_winning}, Losing days={n_losing}")
+        info(f"{pair} last 5 rows:\n{pnl_df.tail().to_string()}")
 
-    print("\n" + "=" * 60)
-    print("PORTFOLIO")
-    print("=" * 60)
-    print(f"Final Net Worth: {networth_vec[-1]:.2f}")
-    print(f"k (days in position %): {k_ratio}")
+    info("=" * 60)
+    info("PORTFOLIO")
+    info("=" * 60)
+    info(f"Final Net Worth: {networth_vec[-1]:.2f}")
+    info(f"k (days in position %): {k_ratio}")
 
-    #generate_metrics_report_main()
+    # 4. SAVE — everything this run produced lives together in run_dir:
+    #    results/<strategy>/<run_id>/{config.yaml, trades.csv, metrics.json, report.html, figures/, run.log}
+    trades_df = results.get("trades_df")
+    if trades_df is not None and not trades_df.empty:
+        trades_path = os.path.join(run_dir, "trades.csv")
+        trades_df.to_csv(trades_path, index=False)
+        info(f"Trade records saved to {trades_path}")
+
+        generate_report(run_dir)
+        info(f"Full run output saved to: {run_dir}")
+    else:
+        warning("No trade records generated — skipping report generation.", __file__)
+
+    return results
 
 if __name__ == "__main__":
     strategy = get_strategy(config["strategy"])
     params = get_params(config)
 
-    run_backtest(strategy, params)
-
-
+    run_backtest(strategy, params, config_path=config_path)

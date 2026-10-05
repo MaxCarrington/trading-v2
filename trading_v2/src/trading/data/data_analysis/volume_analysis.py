@@ -11,7 +11,7 @@ from trading.utils.logger import start_log, info, warning, error
 warnings.filterwarnings("ignore", category=RuntimeWarning, message="Degrees of freedom <= 0 for slice")
 
 # Analyses periods of high trading volume and liquidity
-def combined_liquidity_analysis(series, asset, time_frame, start_date, end_date, vol_lookback=20, liquidity_thresh=0.6, window_size=10, print_output=False):
+def combined_liquidity_analysis(series, asset, time_frame, start_date, end_date, vol_lookback=20, liquidity_thresh=0.6, window_size=10, info_output=False):
     info(f"Current file is {__file__}")
     # Identify high volume periods
     high_volume_periods = high_liquidity_periods(series, vol_lookback, liquidity_thresh)
@@ -53,8 +53,8 @@ def combined_liquidity_analysis(series, asset, time_frame, start_date, end_date,
         'end_date': end_date,
     }
 
-    if print_output:
-        print_liquidity_analysis(liquidity_stats)
+    if info_output:
+        info_liquidity_analysis(liquidity_stats)
 
     return liquidity_stats
 
@@ -210,8 +210,8 @@ def high_liquidity_periods(series, vol_lookback, threshold):
 
     return high_volume_periods
 
-# Print function to neatly display results
-def print_liquidity_analysis(result):
+# info function to neatly display results
+def info_liquidity_analysis(result):
     info("\n\n\n💧 Liquidity Diagnostic Summary")
     info(f"Asset: {result.get('asset')}")
     info(f"Start Date: {result.get('start_date')}")
@@ -228,7 +228,7 @@ def print_liquidity_analysis(result):
     info(f"High Liquidity Selections: {len(final_selection)}")
     info("-" * 40)
 
-    # 🕒 Print all high liquidity timestamps
+    # 🕒 info all high liquidity timestamps
     if len(final_selection) > 0:
         info("🕒 All High Liquidity Timestamps")
         for ts in final_selection:

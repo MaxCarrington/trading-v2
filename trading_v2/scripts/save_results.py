@@ -177,7 +177,7 @@ def main():
 
     # Resolve DB path
     db_path = args.db or str(PROJECT_ROOT / "backtest_results.db")
-    print(f"Using DB: {db_path}")
+    info(f"Using DB: {db_path}")
 
     # Load config to extract metadata
     config_path = Path(args.config)
@@ -191,9 +191,9 @@ def main():
 
     # Find and load trades
     csv_paths = find_latest_csvs(strategy if strategy != "unknown" else None)
-    print(f"Found {len(csv_paths)} CSV(s) from: {csv_paths[0].parent}")
+    info(f"Found {len(csv_paths)} CSV(s) from: {csv_paths[0].parent}")
     df = load_trades(csv_paths)
-    print(f"Loaded {len(df)} closed trades.")
+    info(f"Loaded {len(df)} closed trades.")
 
     # Compute metrics
     metrics = compute_metrics(df)
@@ -206,7 +206,7 @@ def main():
     metrics_path = Path(args.metrics_file)
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
     metrics_path.write_text(json.dumps(metrics, indent=2, default=str), encoding="utf-8")
-    print(f"Metrics JSON written to: {metrics_path}")
+    info(f"Metrics JSON written to: {metrics_path}")
 
     # Persist to SQLite
     conn = get_db(db_path)
@@ -239,14 +239,14 @@ def main():
     ))
     conn.commit()
     conn.close()
-    print(f"Results saved to SQLite (build #{args.build})")
+    info(f"Results saved to SQLite (build #{args.build})")
 
-    # Print summary
-    print("\n========== METRICS SUMMARY ==========")
+    # info summary
+    info("\n========== METRICS SUMMARY ==========")
     for k, v in metrics.items():
         if k != "metrics_json":
-            print(f"  {k:<30} {v}")
-    print("=====================================\n")
+            info(f"  {k:<30} {v}")
+    info("=====================================\n")
 
 
 if __name__ == "__main__":

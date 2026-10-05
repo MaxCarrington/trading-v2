@@ -6,6 +6,7 @@ from trading.risk_management import take_profit
 from trading.risk_management.position_sizing import initialise_kelly
 from trading.risk_management.take_profit import fixed_take_profit
 from trading.risk_management.stop_losses import fixed_stop_loss
+from trading.utils.logger import info, warning, error
 
 class TradeRecords:
     def __init__(self):
@@ -39,6 +40,7 @@ class TradeRecords:
             "period_volatility_score": pd.Series(dtype="float64"),
             "stddev_volatility_score": pd.Series(dtype="float64"),
             "rsi": pd.Series(dtype="float64"),
+            "atr": pd.Series(dtype="float64"),
             "overbought_thresh": pd.Series(dtype="float64"),
             "oversold_thresh": pd.Series(dtype="float64"),
             "moving_average_type": pd.Series(dtype="string"),
@@ -52,7 +54,7 @@ class TradeRecords:
                              trade_type, take_profit, stop_loss, max_holding_duration,
                              normalised_score, combined_volatility_score, period_volatility_score, stddev_volatility,
                              rsi, overbought_thresh, oversold_thresh, moving_average_type, moving_average_value, moving_average_thresh,
-                             entry_date=None, entry_price=None, limitPrice=None, entry_spread=None):
+                             atr, entry_date=None, entry_price=None, limitPrice=None, entry_spread=None):
         # Create a new trade record with all required information about a trade
         self.trade_index += 1
         new_trade = {
@@ -85,6 +87,7 @@ class TradeRecords:
             "period_volatility_score": period_volatility_score,
             "stddev_volatility_score": stddev_volatility,
             "rsi": rsi,
+            "atr": atr,
             "overbought_thresh": overbought_thresh,
             "oversold_thresh": oversold_thresh,
             "moving_average_type": moving_average_type,
@@ -110,31 +113,51 @@ class TradeRecords:
             trade_type = 1 if trade["trade_type"] == "Buy" else -1
             pos_size = trade["pos_size"]
 
-            # Take-profit detection
-            if (trade_type == 1 and todays_high >= trade["take_profit"]) or \
-                    (trade_type == -1 and todays_low <= trade["take_profit"]):
-                self.trade_records.at[idx, "pending_close"] = True
-                self.trade_records.at[idx, "pending_close_reason"] = "take_profit"
-                pos_adjustment += -pos_size if trade_type == 1 else pos_size
+            # Exit conditions are mutually exclusive — a trade can only close
+            # once per bar. We only have OHLC (no intrabar/tick data), so if a
+            # single bar's range spans both the stop and the target we can't
+            # know which was actually touched first. We conservatively assume
+            # the stop-loss hits first (the worst case) rather than
+            # optimistically assuming the target — this avoids overstating
+            # performance. Max-holding-duration is checked last since it only
+            # matters when neither price-based exit already fired this bar.
+            #
+            # NOTE: previously these were three independent `if` blocks, so a
+            # bar that satisfied more than one condition (e.g. a volatile bar
+            # crossing both stop and target, or a max-hold bar that also hit
+            # its stop) would add pos_adjustment multiple times for what
+            # close_trade_records() only ever closes once. That desynced the
+            # engine's tracked position (run_backtest.py's current_pos) from
+            # this class's own trade_records, leaving a phantom residual
+            # position that never flattens — which then permanently blocks
+            # new entries for the rest of the backtest (see
+            # momentum_strategy_v1_3's `already_in_position` check) while the
+            # engine keeps marking the leftover phantom position to market.
+            stop_hit = (trade_type == 1 and todays_low <= trade["stop_loss"]) or \
+                       (trade_type == -1 and todays_high >= trade["stop_loss"])
+            take_profit_hit = (trade_type == 1 and todays_high >= trade["take_profit"]) or \
+                               (trade_type == -1 and todays_low <= trade["take_profit"])
+            max_hold_hit = self.trade_records.at[idx, "holding_duration"] >= trade["max_holding_duration"]
 
-            # Stop-loss detection
-            if (trade_type == 1 and todays_low <= trade["stop_loss"]) or \
-                    (trade_type == -1 and todays_high >= trade["stop_loss"]):
-                self.trade_records.at[idx, "pending_close"] = True
-                self.trade_records.at[idx, "pending_close_reason"] = "stop_loss"
-                pos_adjustment += -pos_size if trade_type == 1 else pos_size
+            if stop_hit:
+                reason = "stop_loss"
+            elif take_profit_hit:
+                reason = "take_profit"
+            elif max_hold_hit:
+                reason = "max_hold"
+            else:
+                reason = None
 
-            # Max holding duration detection
-            if self.trade_records.at[idx, "holding_duration"] >= trade["max_holding_duration"]:
+            if reason is not None:
                 self.trade_records.at[idx, "pending_close"] = True
-                self.trade_records.at[idx, "pending_close_reason"] = "max_hold"
+                self.trade_records.at[idx, "pending_close_reason"] = reason
                 pos_adjustment += -pos_size if trade_type == 1 else pos_size
 
         return pos_adjustment
 
     # Execute closure of trades flagged as pending_close.
     # Called at the start of each iteration, before adjust_positions.
-    def close_trade_records(self, todays_open, todays_spread, todays_date, prompts_on=False):
+    def close_trade_records(self, todays_open, todays_spread, todays_date, prompts_on=True):
         for idx, trade in self.trade_records[self.trade_records["pending_close"]].iterrows():
             self.trade_records.at[idx, "exit_price"] = todays_open
             self.trade_records.at[idx, "exit_date"] = todays_date
@@ -166,9 +189,9 @@ class TradeRecords:
 
             self.trade_records.at[idx, "spread_cost"] = spread_cost
             self.trade_records.at[idx, "profit"] = profit
-
+            info(f"Trade made a profit of: {profit:.2f}")
             if prompts_on:
-                print(
+                info(
                     f"Closed {trade['trade_type']} trade {trade['trade_id']} at {todays_open}, "
                     f"gross={gross:.5f}, spread_cost={spread_cost:.5f}, net={profit:.5f}"
                 )
@@ -210,7 +233,7 @@ class TradeRecords:
                     trade_record["stop_loss"] = fixed_stop_loss(trade_type, todays_open)
                     trade_records[i] = trade_record
                     if prompts_on:
-                        print(f"Series {series_index}. A {trade_type} market order has been placed at {todays_open} "
+                        info(f"Series {series_index}. A {trade_type} market order has been placed at {todays_open} "
                               f"for {position_size} unit(s).")
             store["trade_records"][series_index] = trade_records
         return store
@@ -284,19 +307,19 @@ class TradeRecords:
 
                     if trade_direction == "Buy" and todays_low < entry_price:
                         if prompts_on:
-                            print(f"Series {series_index} Buy limit executed at {entry_price} on {latest_date}; "
+                            info(f"Series {series_index} Buy limit executed at {entry_price} on {latest_date}; "
                                   f"low {todays_low} breached the limit.")
                         trade_record["entry_date"] = latest_date
 
                     elif trade_direction == "Sell" and todays_high > entry_price:
                         if prompts_on:
-                            print(f"Series {series_index} Sell limit executed at {entry_price} on {latest_date}; "
+                            info(f"Series {series_index} Sell limit executed at {entry_price} on {latest_date}; "
                                   f"high {todays_high} breached the limit.")
                         trade_record["entry_date"] = latest_date
 
                     else:
                         if prompts_on:
-                            print(f"Series {series_index} {trade_direction} limit order removed; "
+                            info(f"Series {series_index} {trade_direction} limit order removed; "
                                   f"price did not reach limit. Marking cancelled/closed.")
                         trade_record["entry_date"] = latest_date
                         trade_record["cancelled"] = True
@@ -331,7 +354,7 @@ class TradeRecords:
     # Writes all trade records to a timestamped CSV file
     def write_to_file(self, directory=".", prefix="trade_records"):
         if self.df.empty:
-            print("No trade records to write.")
+            info("No trade records to write.")
             return
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -340,9 +363,9 @@ class TradeRecords:
 
         try:
             self.df.to_csv(filepath, index=False)
-            print(f"Trade records written to {filepath}")
+            info(f"Trade records written to {filepath}")
         except Exception as e:
-            print(f"Error writing trade records: {e}")
+            info(f"Error writing trade records: {e}")
 
     # Check take-profits at today's open; close trades if hit, and return position delta
     def check_take_profits(self, store, todays_open, series_index, prompts_on=False):
@@ -353,7 +376,7 @@ class TradeRecords:
         # Pre-bind lookups for minor performance gain
         close_trade = self.close_trade_record
         if prompts_on:
-            log = print
+            log = info
         else:
             log = lambda *a, **k: None  # no-op if not verbose
 

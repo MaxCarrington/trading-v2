@@ -1,9 +1,9 @@
 from trading.strategies.momentum_v1_2 import momentum_strategy_v1_2
 from trading.strategies.momentum_v1_3 import momentum_strategy_v1_3
-
+from trading.utils.logger import start_log, info, warning, error
 
 def get_strategy(strategy_name: str):
-    print(strategy_name)
+    info(strategy_name)
     if strategy_name == 'momentum_v1.2':
         return momentum_strategy_v1_2
     elif strategy_name == 'momentum_v1.3':

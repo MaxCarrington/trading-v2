@@ -38,7 +38,7 @@ def perform_variance_ratio_test(series, lags=[2, 3, 5, 10], alpha=0.05, deviatio
                     'Reason': 'Significant deviation from random walk'
                 }
         except Exception as e:
-            print(f"VR test failed for lag {k}: {e}")
+            info(f"VR test failed for lag {k}: {e}")
             continue
 
     # No significant result found — return best available fallback

@@ -6,13 +6,13 @@ import colorlog
 from trading.utils.paths import get_logs_dir
 
 
-# Ensure logs directory exists
+# Default (date-bucketed) log location. Actual directory creation is lazy —
+# it happens inside start_log() when a log file is actually opened, not at
+# import time — so importing this module no longer creates an empty
+# logs/<date>/ folder on every run.
 DEFAULT_LOG_DIR = get_logs_dir()
 todays_date = datetime.now().strftime("%Y%m%d")
 LOG_DIR = os.path.join(DEFAULT_LOG_DIR, todays_date)
-
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
 
 def _default_logger() -> logging.Logger:
     logger = logging.getLogger("trading")
@@ -47,23 +47,30 @@ def start_log(
     config: Optional[Dict] = None,
     *,
     name_prefix: str = "backtest",
-    log_subdir: Optional[str] = None,   # 👈 NEW
+    log_subdir: Optional[str] = None,
+    log_dir: Optional[str] = None,   # 👈 NEW: explicit directory override (e.g. a run folder)
+    filename: Optional[str] = None,  # 👈 NEW: explicit filename override (e.g. "run.log")
 ):
     global log
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    if config_path:
-        base = os.path.splitext(os.path.basename(config_path))[0]
-        filename = f"{base}_{ts}.log"
-    else:
-        filename = f"{name_prefix}_{ts}.log"
+    # Filename: explicit override wins, otherwise fall back to the old
+    # config-based / auto-timestamped naming.
+    if filename is None:
+        if config_path:
+            base = os.path.splitext(os.path.basename(config_path))[0]
+            filename = f"{base}_{ts}.log"
+        else:
+            filename = f"{name_prefix}_{ts}.log"
 
-    # 👇 choose directory dynamically
-    if log_subdir:
-        log_dir = os.path.join(LOG_DIR, log_subdir)
-    else:
-        log_dir = LOG_DIR
+    # Directory: explicit override wins (e.g. a per-run results folder),
+    # otherwise fall back to the date-bucketed default logs/ tree.
+    if log_dir is None:
+        if log_subdir:
+            log_dir = os.path.join(LOG_DIR, log_subdir)
+        else:
+            log_dir = LOG_DIR
 
     os.makedirs(log_dir, exist_ok=True)
 

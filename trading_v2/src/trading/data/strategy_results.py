@@ -25,12 +25,12 @@ def pd_ratio(series):
     mdd = (series.cummax() - series).max()
     final = series.iloc[-1]
 
-    print("---- PD Ratio Debug ----")
-    print("Final PnL:", final)
-    print("Max Drawdown:", mdd)
-    print("Series Head:\n", series.head())
-    print("Series Tail:\n", series.tail())
-    print("------------------------")
+    info("---- PD Ratio Debug ----")
+    info("Final PnL:", final)
+    info("Max Drawdown:", mdd)
+    info("Series Head:\n", series.head())
+    info("Series Tail:\n", series.tail())
+    info("------------------------")
 
     if mdd == 0:
         return float('nan') if final > 0 else round(final, 2)
@@ -86,13 +86,13 @@ def plot_strategy_results(data_list, results, title_string="test", save=False, s
     # Update column names with PD ratio strings
     net_pnl = toplot.iloc[:, 0] - starting_capital
 
-    print("---- Portfolio Net Worth Debug ----")
-    print("Net Worth Head:\n", toplot.iloc[:, 0].head())
-    print("Net Worth Tail:\n", toplot.iloc[:, 0].tail())
-    print("Net PnL Head:\n", net_pnl.head())
-    print("Net PnL Tail:\n", net_pnl.tail())
-    print("PD Ratio:", pd_ratio(net_pnl))
-    print("------------------------")
+    info("---- Portfolio Net Worth Debug ----")
+    info("Net Worth Head:\n", toplot.iloc[:, 0].head())
+    info("Net Worth Tail:\n", toplot.iloc[:, 0].tail())
+    info("Net PnL Head:\n", net_pnl.head())
+    info("Net PnL Tail:\n", net_pnl.tail())
+    info("PD Ratio:", pd_ratio(net_pnl))
+    info("------------------------")
 
     toplot.columns = [
         f"{name} {pd_ratio_string(net_pnl if i == 0 else pd_ratio_lists[name])}"
@@ -142,7 +142,7 @@ def plot_strategy_results(data_list, results, title_string="test", save=False, s
 
 # Saves a figure with a specific file name to a specific directory
 def save_plot(fig, save_dir, file_name, dpi=300):
-    print(file_name)
+    info(file_name)
     # Ensure directory exists
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir, exist_ok=True)
@@ -152,4 +152,4 @@ def save_plot(fig, save_dir, file_name, dpi=300):
 
     # Save the figure
     fig.savefig(file_path, dpi=dpi, bbox_inches='tight')
-    print(f"Plot saved to: {file_path}")
+    info(f"Plot saved to: {file_path}")

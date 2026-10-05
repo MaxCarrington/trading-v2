@@ -8,16 +8,16 @@ starting_capital: 10000
 
 symbols:
   - "AUD_USD"
-  - "EUR_USD"
-  - "GBP_USD"
-  - "NZD_USD"
-  - "USD_CAD"
-  - "USD_CHF"
+  #- "EUR_USD"
+  #- "GBP_USD"
+  #- "NZD_USD"
+  #- "USD_CAD"
+  #- "USD_CHF"
   #- "USD_JPY"
 
 timeframe: "H1"
 start_date: "01-01"
-end_date: "12-24"
+end_date: "04-02"
 year: "2025"
 
 parameters:
@@ -111,13 +111,13 @@ parameters:
     USD_CHF: 0.97
     #USD_JPY: 0.97
   max_holding_duration:
-    AUD_USD: 35
-    EUR_USD: 35
-    GBP_USD: 35
-    NZD_USD: 35
-    USD_CAD: 35
-    USD_CHF: 35
-    #USD_JPY: 35
+    AUD_USD: 50
+    EUR_USD: 50
+    GBP_USD: 50
+    NZD_USD: 50
+    USD_CAD: 50
+    USD_CHF: 50
+    #USD_JPY: 50
 
   # Signal type to use
   signal_type: "donchian"          # or "correlation" for the existing score
@@ -136,6 +136,6 @@ parameters:
 
   # Take profit can stay percentage-based for now
   take_profit_type: "atr"
-  take_profit_value: 5.0
+  take_profit_value: 3.0
 
   atr_lookback: 14           # standard
