@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from oandapyV20 import API
 from trading.utils.paths import get_forex_dir, get_time_frames, get_pairs
 
+from trading.utils.logger import info, warning, error
 load_dotenv()
 
 client = API(

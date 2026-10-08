@@ -142,6 +142,6 @@ start()
 ''' Example call: - This will get all available data in 2025 
 python scripts/generate_backtest_data.py \
   --data forex \
-  --period 2024-09-04,2024-12-31 \
+  --period 2024-01-01,2024-12-31 \
   --timeframe D,H4,H1,M30,M15,M5,M1
 '''
