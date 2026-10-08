@@ -262,17 +262,17 @@ def momentum_strategy_v1_3(store, new_row_list, current_pos, account_info, param
                     store["pending_period_volatility_score"][symbol] = entry_volatility_period
                     store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
 
-                # elif valid_signal and direction == -1:#and rsi_oversold:
-                #     info(
-                #         f"SELL SIGNAL  {row['Time']}  {symbol}  Score={normalised_score:.2f}  size={trade_size:.2f} rsi={rsi_value:.2f} equity={account_info.get('netWorth', 0):.2f}")
-                #     market[i] -= trade_size
-                #     store["pending_trades"][symbol] = -1
-                #     store["pending_pos_size"][symbol] = trade_size
-                #     store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
-                #     store["pending_normalised_score"][symbol] = normalised_score
-                #     store["pending_combined_volatility_score"][symbol] = entry_volatility_score
-                #     store["pending_period_volatility_score"][symbol] = entry_volatility_period
-                #     store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
+                elif valid_signal and direction == -1:#and rsi_oversold:
+                    info(
+                        f"SELL SIGNAL  {row['Time']}  {symbol}  Score={normalised_score:.2f}  size={trade_size:.2f} rsi={rsi_value:.2f} equity={account_info.get('netWorth', 0):.2f}")
+                    market[i] -= trade_size
+                    store["pending_trades"][symbol] = -1
+                    store["pending_pos_size"][symbol] = trade_size
+                    store["pending_entry_date"][symbol] = row["Time"].replace(tzinfo=None)
+                    store["pending_normalised_score"][symbol] = normalised_score
+                    store["pending_combined_volatility_score"][symbol] = entry_volatility_score
+                    store["pending_period_volatility_score"][symbol] = entry_volatility_period
+                    store["pending_stddev_volatility_score"][symbol] = entry_volatility_stddev
 
                 else:
                     store["pending_trades"][symbol] = 0

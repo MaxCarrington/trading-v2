@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import nolds
 from hurst import compute_Hc
+from trading.utils.logger import info
 
 # Calculates the Hurst exponent
 # The Hurst exponent measures the degree of stationarity or trend of a time
