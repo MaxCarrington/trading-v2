@@ -1,0 +1,15 @@
+# H7: FX carry
+# Data rules: research 2005-2018 | validation 2019-2022 (a few looks) | final holdout 2023-2026 (once)
+symbols: [EUR_USD, GBP_USD, AUD_USD, NZD_USD, USD_CAD, USD_CHF, USD_JPY,
+          EUR_GBP, EUR_JPY, GBP_JPY, EUR_CHF, AUD_JPY, EUR_AUD, AUD_NZD]
+currencies: [USD, EUR, GBP, JPY, AUD, NZD, CAD, CHF]   # files in data/rates/
+timeframe: D
+years: [2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]   # research period only
+n_pairs: 3                  # buy the 3 highest-carry pairs, sell the 3 lowest
+n_pairs_options: [2, 3, 4]  # tried in the walk-forward
+train_years: 2
+vol_window: 20      # days used to measure volatility
+vol_lookback: 250   # calm = volatility below its median over this many days
+trend_window: 60    # carry + trend: price must be above (long) or below (short) its 60-day average
+rate_change_months: [3, 6, 12]   # H8: how far back to measure the change in rate gap
+n_pairs_rate_change: [2, 3]

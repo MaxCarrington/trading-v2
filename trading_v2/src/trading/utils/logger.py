@@ -111,11 +111,16 @@ def info(msg: str, file=None):
         log.info(f"{msg}")
 
 
-def warning(msg: str, file):
+def warning(msg: str, file=None):
+    if file is not None:
+        log.warning(f"{msg}.       File location: {file}")
+    else:
+        log.warning(f"{msg}")
 
-    log.warning(f"{msg}.       File location: {file}")
 
-
-def error(msg: str, file):
-    log.error(f"{msg}.       File location: {file}")
+def error(msg: str, file=None):
+    if file is not None:
+        log.error(f"{msg}.       File location: {file}")
+    else:
+        log.error(f"{msg}")
 

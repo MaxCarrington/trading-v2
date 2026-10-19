@@ -24,8 +24,11 @@ def get_params(config):
         return get_momentum_v1_2_params(config)
     elif config.get("strategy") == "momentum_v1.3":
         return get_momentum_v1_3_params(config)
+    elif config.get("strategy") == "mmean_reversion_v1.0":
+        return
     else:
         raise ValueError(f"Invalid strategy name: {config.get('strategy')}")
+
 
 def get_momentum_v1_3_params(config):
     parameters = config.get("parameters")

@@ -73,7 +73,7 @@ def get_time_frames():
 
 
 def get_tickers(data_type):
-    if data_type == "stock" and "--tickers" in sys.argv:
+    if "--tickers" in sys.argv:
         index = sys.argv.index("--tickers")
         if index + 1 >= len(sys.argv):
             error("No tickers specified after --tickers flag.")
@@ -91,7 +91,6 @@ def years_to_boundaries(years):
 
 def get_end_of_year(year):
     return f"{int(year):04d}-12-31"
-
 
 def start():
     data_type = get_data_type()
@@ -133,7 +132,7 @@ def start():
 
         from trading.data.data_gathering.OANDA import get_data_from_period
         get_data_from_period(start_date, end_date, time_frames=selected_frames, pairs=tickers)
-
+        info("All data downloaded.")
 
 start()
 

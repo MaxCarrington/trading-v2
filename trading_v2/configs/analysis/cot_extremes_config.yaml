@@ -1,0 +1,40 @@
+# H11: speculator positioning extremes (CFTC COT)
+# Data rules: research 2005-2018 | validation 2019-2022 (a few looks) | final holdout 2023-2026 (once)
+currencies:            # currency -> CFTC contract code (files in data/cot/)
+  EUR: "099741"
+  GBP: "096742"
+  JPY: "097741"
+  AUD: "232741"
+  NZD: "112741"
+  CAD: "090741"
+  CHF: "092741"
+pairs:                 # currency -> OANDA pair we trade
+  EUR: EUR_USD
+  GBP: GBP_USD
+  JPY: USD_JPY
+  AUD: AUD_USD
+  NZD: NZD_USD
+  CAD: USD_CAD
+  CHF: USD_CHF
+timeframe: D
+years: [2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]   # research period only
+z_weeks: 156           # z-score against the past 3 years of weekly positions
+z_entry: 2             # base variant
+hold: 4                # base variant, weeks
+z_entry_options: [1.5, 2]
+hold_options: [2, 4]
+train_years: 2
+
+# Costs (OANDA core pricing)
+core_spread_pips: {EUR_USD: 0.1, GBP_USD: 0.1, USD_JPY: 0.1, AUD_USD: 0.3, NZD_USD: 0.4, USD_CAD: 0.3, USD_CHF: 0.1}   # website "from" spreads
+spread_markup_pips: 0.2     # typical spread is wider than the "from" spread
+commission_%: 0.003         # per side, % of trade size
+slippage_pips: 0.3          # on entry and on exit
+swap_markup_%: 1.5          # OANDA's financing markup, % a year (my estimate)
+
+# H11b: follow the crowd (rules frozen 2026-10-19 before running), validation only
+h11b_z_entry: 2
+h11b_hold: 4
+run_validation: false   # look 1 run 2026-10-19: 12 trades, net -47.5, t -1.00. FAILED
+validation_years: [2019, 2020, 2021, 2022]
+validation_looks: 1

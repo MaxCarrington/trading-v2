@@ -1,0 +1,13 @@
+# H1: month-end fix flow (Melvin & Prins 2015)
+# Each FX pair -> the foreign stock index we compare with the S&P 500
+pairs:
+  EUR_USD: DE30_EUR
+  GBP_USD: UK100_GBP
+  USD_JPY: JP225_USD
+us_index: SPX500_USD
+years: [2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
+timeframe: H1
+entry_hour: 12   # London time, enter on the last weekday of the month
+fix_hour: 16     # the London 4pm fix, exit here
+exit_hour: 18    # only used to check what happens after the fix
+train_years: 2   # walk-forward: 2 years train, next year test

@@ -26,6 +26,25 @@ def calc_slippage(prev_close, curr_open, slippage_multiplier):
     overnight_gap = abs(prev_close - curr_open)
     return slippage_multiplier * overnight_gap
 
+# Cost of one fill, in the same units as PnL (price x units).
+# costs = the "costs" section of the config (params["costs"]):
+#   model: "intraday"      -> half the spread + commission on every fill, plus slippage on market and stop fills
+#   model: "overnight_gap" -> the old model: slippage = slippage_multiplier x overnight gap, on market orders only
+# If the config has no "costs" section, the old model is used, so older strategies behave exactly as before.
+def fill_cost(units, price, pair, costs, prices, slippage_multiplier, slippage_on=True):
+    if not units:
+        return 0.0
+    if not costs or costs.get("model", "overnight_gap") == "overnight_gap":
+        if not slippage_on:
+            return 0.0
+        return abs(units) * calc_slippage(prices['prev_close'], prices['curr_open'], slippage_multiplier)
+    pip = 0.01 if "JPY" in pair else 0.0001
+    spread_pips = costs["spread_pips"].get(pair, costs["spread_pips"].get("default", 0.0))
+    per_unit = spread_pips / 2 * pip + costs["commission_pct"] / 100 * price   # pay half the spread on each side
+    if slippage_on:
+        per_unit += costs["slippage_pips"] * pip
+    return abs(units) * per_unit
+
 # Gets the previous close, open, high, low and current close, open, high, low
 def get_prices(prev_row, curr_row, next_row=None):
     prices = {
@@ -51,7 +70,10 @@ def get_prices(prev_row, curr_row, next_row=None):
 def find_pnl(prices, old_pos, market_order,
              limit_order1, limit_price1,
              limit_order2, limit_price2,
-             slippage_multiplier):
+             slippage_multiplier,
+             stop_order1=0, stop_price1=0,
+             stop_order2=0, stop_price2=0,
+             pair="", costs=None):
     """
     prices: dict from get_prices(prev, curr, next)
     Returns dict: pnl, base_pnl, money_spent, new_pos, current_value, old_value
@@ -68,19 +90,29 @@ def find_pnl(prices, old_pos, market_order,
     # --- Market order execution at next open with slippage cost at current open ---
     if market_order != 0:
         info(f"Trade type is MARKET ORDER with value: {market_order}")
-        slippage = calc_slippage(prices['prev_close'], prices['curr_open'], slippage_multiplier)
-        pnl += market_order * (prices['next_open'] - prices['curr_open']) - abs(market_order) * slippage
-        # Cash impact: executed “at current open” with slippage (R model)
-        money_spent += (market_order * prices['curr_open']) + (abs(market_order) * slippage)
+        cost = fill_cost(market_order, prices['curr_open'], pair, costs, prices, slippage_multiplier)
+        pnl += market_order * (prices['next_open'] - prices['curr_open']) - cost
+        # Cash impact: executed “at current open” plus costs (R model)
+        money_spent += (market_order * prices['curr_open']) + cost
         new_pos += market_order
 
     # --- Limit orders (each can fill once, valid for next day only) ---
-    l1 = check_limit_order(prices, limit_order1, limit_price1)
-    l2 = check_limit_order(prices, limit_order2, limit_price2)
+    # Limit fills pay spread + commission but no slippage
+    for fill in (check_limit_order(prices, limit_order1, limit_price1),
+                 check_limit_order(prices, limit_order2, limit_price2)):
+        cost = fill_cost(fill['new_pos'], fill['price'], pair, costs, prices, slippage_multiplier, slippage_on=False)
+        pnl += fill['pnl'] - cost
+        money_spent += fill['money_spent'] + cost
+        new_pos += fill['new_pos']
 
-    pnl += l1['pnl'] + l2['pnl']
-    money_spent += l1['money_spent'] + l2['money_spent']
-    new_pos += l1['new_pos'] + l2['new_pos']
+    # --- Stop orders (each can fill once, valid for this bar only) ---
+    # If both trigger in the same bar, both fill (we can't tell which came first, so assume the worst).
+    for fill in (check_stop_order(prices, stop_order1, stop_price1),
+                 check_stop_order(prices, stop_order2, stop_price2)):
+        cost = fill_cost(fill['new_pos'], fill['price'], pair, costs, prices, slippage_multiplier)
+        pnl += fill['pnl'] - cost
+        money_spent += fill['money_spent'] + cost
+        new_pos += fill['new_pos']
 
     current_value = prices['next_open'] * new_pos
 
@@ -102,6 +134,8 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
     # For each series, store a list of daily pnl values.
     pnl_lists = [[] for _ in range(num_series)]
     portfolio_net_worth_list = []
+
+    costs = params.get("costs")  # None -> old overnight-gap slippage model
 
     # Initialize persistent store (None initially)
     store = None
@@ -129,6 +163,10 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
         limit_prices_1 = orders.get("limitPrices1", [0] * num_series)
         limit_orders_2 = orders.get("limitOrders2", [0] * num_series)
         limit_prices_2 = orders.get("limitPrices2", [0] * num_series)
+        stop_orders_1 = orders.get("stopOrders1", [0] * num_series)
+        stop_prices_1 = orders.get("stopPrices1", [0] * num_series)
+        stop_orders_2 = orders.get("stopOrders2", [0] * num_series)
+        stop_prices_2 = orders.get("stopPrices2", [0] * num_series)
         store = orders["store"]
         check_lengths(num_series, orders)
         # 4) Now it’s safe to look at the next bar to settle PnL (simulate next open)
@@ -155,7 +193,13 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
                 limit_price1=limit_prices_1[j],
                 limit_order2=limit_orders_2[j],
                 limit_price2=limit_prices_2[j],
-                slippage_multiplier=slippage_multiplier
+                slippage_multiplier=slippage_multiplier,
+                stop_order1=stop_orders_1[j],
+                stop_price1=stop_prices_1[j],
+                stop_order2=stop_orders_2[j],
+                stop_price2=stop_prices_2[j],
+                pair=params['pairs'][j],
+                costs=costs,
             )
             trade_results.append(res)
             money_spent_total += res['money_spent']
@@ -195,7 +239,7 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
             exit_values = []
             for j in range(num_series):
                 prices_liq = get_prices(prev_rows[j], curr_rows[j], None)
-                pnl_slip, nw = final_exit(prices_liq, current_pos[j], slippage_multiplier)
+                pnl_slip, nw = final_exit(prices_liq, current_pos[j], slippage_multiplier, params['pairs'][j], costs)
                 exit_pnls.append(pnl_slip)
                 exit_values.append(nw)
 
@@ -213,7 +257,7 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
     for j in range(num_series):
         # Treat penultimate as prev, last as curr
         prices_last = get_prices(data_list[j].iloc[-2], data_list[j].iloc[-1], None)
-        pnl_slip, nw = final_exit(prices_last, current_pos[j], slippage_multiplier)
+        pnl_slip, nw = final_exit(prices_last, current_pos[j], slippage_multiplier, params['pairs'][j], costs)
         final_exit_pnls.append(pnl_slip)
         final_exit_values.append(nw)
 
@@ -252,12 +296,11 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
         "trades_df": trades_df,
     }
 
-def close_out(prices, pos, slippage_multiplier):
-    slippage = calc_slippage(prices['prev_close'], prices['curr_open'], slippage_multiplier)
-    return -abs(pos) * slippage  # cost to liquidate via market
+def close_out(prices, pos, slippage_multiplier, pair="", costs=None):
+    return -fill_cost(pos, prices['curr_open'], pair, costs, prices, slippage_multiplier)  # cost to liquidate via market
 
-def final_exit(prices, pos, slippage_multiplier):
-    pnl_slip = close_out(prices, pos, slippage_multiplier)
+def final_exit(prices, pos, slippage_multiplier, pair="", costs=None):
+    pnl_slip = close_out(prices, pos, slippage_multiplier, pair, costs)
     net_worth = prices['curr_open'] * pos + pnl_slip
     return pnl_slip, net_worth
 
@@ -267,6 +310,7 @@ def check_limit_order(prices, limit_order, limit_price):
     pnl = 0.0
     new_pos = 0.0
     money_spent = 0.0
+    execution_price = None
 
     # --- Check if limit order can execute ---
     buy_condition = limit_order > 0 and prices['curr_low'] < (limit_price - eps)
@@ -286,10 +330,32 @@ def check_limit_order(prices, limit_order, limit_price):
         money_spent = execution_price * limit_order
         new_pos = limit_order
 
-    return {'pnl': pnl, 'money_spent': money_spent, 'new_pos': new_pos}
+    return {'pnl': pnl, 'money_spent': money_spent, 'new_pos': new_pos, 'price': execution_price}
+
+# Stop order: buy when price rises TO stop_price, sell when it falls to it.
+# Used for breakout entries (buy above the range) and protective stop losses that fill inside the bar.
+# Valid for the current bar only. If the bar opens past the stop (a gap), it fills at the open, which is worse.
+def check_stop_order(prices, stop_order, stop_price):
+    pnl = 0.0
+    new_pos = 0.0
+    money_spent = 0.0
+    execution_price = None
+
+    if stop_order > 0 and prices['curr_high'] >= stop_price:
+        execution_price = max(prices['curr_open'], stop_price)
+    elif stop_order < 0 and prices['curr_low'] <= stop_price:
+        execution_price = min(prices['curr_open'], stop_price)
+
+    if execution_price is not None:
+        pnl = stop_order * (prices['next_open'] - execution_price)
+        money_spent = execution_price * stop_order
+        new_pos = stop_order
+
+    return {'pnl': pnl, 'money_spent': money_spent, 'new_pos': new_pos, 'price': execution_price}
 
 def check_lengths(num_series, orders):
-    for k in ("marketOrders","limitOrders1","limitPrices1","limitOrders2","limitPrices2"):
+    for k in ("marketOrders","limitOrders1","limitPrices1","limitOrders2","limitPrices2",
+              "stopOrders1","stopPrices1","stopOrders2","stopPrices2"):
         if k in orders and len(orders[k]) != num_series:
             raise ValueError(f"len({k})={len(orders[k])} != num_series={num_series}")
 

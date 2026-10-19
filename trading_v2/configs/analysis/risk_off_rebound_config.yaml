@@ -1,0 +1,19 @@
+# H10: risk-off rebound in the JPY crosses
+# Data rules: research 2005-2018 | validation 2019-2022 (a few looks) | final holdout 2023-2026 (once)
+symbols: [USD_JPY, EUR_JPY, GBP_JPY, AUD_JPY]
+timeframe: D
+years: [2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]   # research period only
+move_days: 5          # size of the fall is measured over 5 days
+vol_lookback: 250     # "usual" 5-day move = standard deviation over the past 250 days
+k: 2                  # base variant: fall bigger than 2x the usual move
+hold: 5               # base variant: hold 5 days
+k_options: [2, 2.5]   # tried in the walk-forward
+hold_options: [5, 10]
+train_years: 2
+
+# Costs (OANDA core pricing, same as the London Breakout)
+core_spread_pips: {USD_JPY: 0.1, EUR_JPY: 0.6, GBP_JPY: 0.3, AUD_JPY: 0.6}   # website "from" spreads; AUD_JPY is my guess
+spread_markup_pips: 0.2     # typical spread is wider than the "from" spread
+commission_%: 0.003         # per side, % of trade size
+slippage_pips: 0.3          # on entry and on exit
+swap_markup_%: 1.5          # OANDA's financing markup, % a year (my estimate): long earns rate gap minus this

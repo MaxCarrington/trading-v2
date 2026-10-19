@@ -1,0 +1,10 @@
+strategy: "mean_reversion_v1.0"
+
+provider: "OANDA"
+security_type: "forex"
+
+symbols: [EUR_USD, GBP_USD, AUD_USD, NZD_USD, USD_CAD, USD_CHF, USD_JPY,
+          EUR_GBP, EUR_JPY, GBP_JPY, EUR_CHF, AUD_JPY, EUR_AUD, AUD_NZD]
+
+timeframe: "M30"
+year: "2026"

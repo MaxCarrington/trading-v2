@@ -1,0 +1,61 @@
+# H9b: London Breakout, JPY pairs only (picked after looking at H9, so stricter rules)
+# Data rules: research 2005-2018 | validation 2019-2022 (a few looks) | final holdout 2023-2026 (once)
+symbols: [USD_JPY, EUR_JPY, GBP_JPY, AUD_JPY]
+timeframe: H1
+years: [2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]   # research period only
+asia_end: 7                      # Asian range = 00:00-07:00 London
+exit_hour: 20                    # close any open trade at 20:00 London
+entry_end_options: [12, 16]      # last hour a breakout can be entered
+stop_options: [other side, middle]
+train_years: 2
+
+# Costs, round trip in pips
+cost_model: core       # core = OANDA core pricing (spread + commission) | raw = my raw-spread estimates | oanda = OANDA's own spread
+raw_cost_pips:         # estimates for a raw-spread account (about 0.1-0.5 spread + about 0.6-0.7 pips commission)
+  default: 0.7
+  EUR_USD: 0.6
+  USD_JPY: 0.7
+  GBP_USD: 0.9
+  EUR_GBP: 0.9
+  AUD_USD: 0.8
+  USD_CHF: 0.9
+  USD_CAD: 0.9
+  NZD_USD: 1.1
+  EUR_JPY: 1.0
+  AUD_JPY: 1.1
+  EUR_CHF: 1.1
+  GBP_JPY: 1.5
+  EUR_AUD: 1.4
+  AUD_NZD: 1.8
+
+core_spread_pips:      # OANDA website "spreads from" for core pricing (AUD_JPY not listed: my guess)
+  USD_JPY: 0.1
+  EUR_JPY: 0.6
+  GBP_JPY: 0.3
+  AUD_JPY: 0.6
+spread_markup_pips: 0.2   # typical spread is wider than the "from" spread
+commission_%: 0.003       # per side, % of trade size (OANDA TMS fee table, .pro FX). About 0.6-1.2 pips round trip on JPY pairs
+
+# Validation (2019-2022): only once research passes, max 3 looks, rules frozen
+run_validation: false   # look 1 done on 2026-10-19
+validation_years: [2019, 2020, 2021, 2022]
+validation_looks: 1
+
+# Realism checks (research years only)
+slippage_pips: 0.3      # worse fill on entry and on the stop, in pips
+risk_per_trade_%: 0.5   # account risk per trade, stop at the other side of the range
+fill_check_timeframe: M5   # Cell 6d: rerun the frozen rules on M5 to test the H1 fill assumptions
+fill_check_years: [2014, 2015, 2016, 2017, 2018]
+
+# Round 2 refinement (research only, one round, written before running)
+round2_range_filters: [none, skip wide, skip narrow]
+round2_exit_hours: [16, 20, 22]   # London
+range_lookback: 60                # days used to judge a wide or narrow Asian range
+wide_pct: 0.8
+narrow_pct: 0.2
+whipsaw_haircut_pips: 0.3         # from the M5 check
+round2_t: 3
+
+# Final holdout (run ONCE, rules frozen)
+run_holdout: false   # run ONCE on 2026-10-19: net -0.00, t -0.00, 2 of 4 years. FAILED, idea dead
+holdout_years: [2023, 2024, 2025, 2026]

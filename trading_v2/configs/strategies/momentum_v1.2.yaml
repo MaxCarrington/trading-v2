@@ -1,10 +1,11 @@
-# Backtest configuration for the version 1.3 of the momentum strategy
+# Momentum strategy v1.2 config file
+# Run with: python scripts/run_backtest.py --config momentum_v1.2.yaml
 
-strategy: "momentum_v1.3"
+strategy: "momentum_v1.2"
 
 provider: "OANDA"
 security_type: "forex"
-starting_capital: 10000
+starting_capital: 1000
 
 symbols:
   - "AUD_USD"
@@ -16,9 +17,9 @@ symbols:
   #- "USD_JPY"
 
 timeframe: "H1"
-start_date: "01-01"
-end_date: "04-02"
-year: "2024"
+start_date: "02-01"
+end_date: "03-01"
+year: "2025"
 
 parameters:
   momentum_lookback:
@@ -111,24 +112,18 @@ parameters:
     USD_CHF: 0.97
     #USD_JPY: 0.97
   max_holding_duration:
-    AUD_USD: 50
-    EUR_USD: 50
-    GBP_USD: 50
-    NZD_USD: 50
-    USD_CAD: 50
-    USD_CHF: 50
-    #USD_JPY: 50
-
-  # Signal type to use
-  signal_type: "donchian"          # or "correlation" for the existing score
-  donchian_lookback: 20            # bars; tune this
+    AUD_USD: 35
+    EUR_USD: 35
+    GBP_USD: 35
+    NZD_USD: 35
+    USD_CAD: 35
+    USD_CHF: 35
+    #USD_JPY: 35
 
   # Risk management
-  position_size_type: "risk_based"
-  position_size: 1000             # ← add (unused when type=risk_based, but validator wants it)
-  risk_per_trade: 0.005
-  max_position_size: 5000
-  max_open_positions: 1           # ← add (used to cap concurrent trades; 1 = strict one-x
+  max_open_positions: 1
+  position_size_type: "fixed"
+  position_size: 1000
 
   # ATR-based stop loss
   stop_loss_type: "atr"
@@ -136,6 +131,6 @@ parameters:
 
   # Take profit can stay percentage-based for now
   take_profit_type: "atr"
-  take_profit_value: 3.0
+  take_profit_value: 5.0
 
   atr_lookback: 14           # standard

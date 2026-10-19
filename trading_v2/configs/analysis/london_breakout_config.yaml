@@ -1,0 +1,30 @@
+# H9: London Breakout
+# Data rules: research 2005-2018 | validation 2019-2022 (a few looks) | final holdout 2023-2026 (once)
+symbols: [EUR_USD, GBP_USD, AUD_USD, NZD_USD, USD_CAD, USD_CHF, USD_JPY,
+          EUR_GBP, EUR_JPY, GBP_JPY, EUR_CHF, AUD_JPY, EUR_AUD, AUD_NZD]
+timeframe: H1
+years: [2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]   # research period only
+asia_end: 7                      # Asian range = 00:00-07:00 London
+exit_hour: 20                    # close any open trade at 20:00 London
+entry_end_options: [12, 16]      # last hour a breakout can be entered
+stop_options: [other side, middle]
+train_years: 2
+
+# Costs, round trip in pips
+cost_model: raw        # raw = raw-spread account (spread + commission) | oanda = OANDA's own spread
+raw_cost_pips:         # estimates for a raw-spread account (about 0.1-0.5 spread + about 0.6-0.7 pips commission)
+  default: 0.7
+  EUR_USD: 0.6
+  USD_JPY: 0.7
+  GBP_USD: 0.9
+  EUR_GBP: 0.9
+  AUD_USD: 0.8
+  USD_CHF: 0.9
+  USD_CAD: 0.9
+  NZD_USD: 1.1
+  EUR_JPY: 1.0
+  AUD_JPY: 1.1
+  EUR_CHF: 1.1
+  GBP_JPY: 1.5
+  EUR_AUD: 1.4
+  AUD_NZD: 1.8

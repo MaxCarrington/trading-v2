@@ -1,0 +1,11 @@
+# H6: cross-pair reversal
+# Data rules: research 2005-2018 | validation 2019-2022 (a few looks) | final holdout 2023-2026 (once)
+symbols: [EUR_USD, GBP_USD, AUD_USD, NZD_USD, USD_CAD, USD_CHF, USD_JPY,
+          EUR_GBP, EUR_JPY, GBP_JPY, EUR_CHF, AUD_JPY, EUR_AUD, AUD_NZD]
+timeframe: D
+years: [2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]   # research period only
+lookback: 20          # days of past return to rank on, and days to hold
+n_pairs: 3            # buy the 3 worst, sell the 3 best
+lookbacks: [5, 10, 20, 60]     # tried in the walk-forward
+n_pairs_options: [2, 3, 4]
+train_years: 2

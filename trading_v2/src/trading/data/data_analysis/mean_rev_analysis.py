@@ -15,76 +15,8 @@ from trading.utils.logger import start_log, info, warning, error
 #   - If score is higher than the set amount, the time series will be used for
 #     mean reversion
 def get_series_mean_rev_stats(series, asset, time_frame, start_date, end_date, threshold=0.05, info_output=False):
-    close = series["Close"]
-    score = 0
-    consistency = 0
-    # --- Run diagnostics ---
-    h_val = calculate_hurst_exponent(close)
-    vr_result = perform_variance_ratio_test(close)
-    adf_result = perform_adf_test(close)
-    half_life = calculate_half_life(close)
 
-    # --- Scoring logic ---
-    def score_hurst(h):
-        if h['classification'] == 'mean_reverting':
-            return 20, True
-        else:
-            return 0, False
-
-    def score_vr(vr):
-        return (15, True) if vr.get('significant') else (0, False)
-
-    def score_adf(adf):
-        pval = adf.get('p_value')
-        return (20, True) if pval is not None and pval < threshold else (0, False)
-
-    # Apply scoring
-    hurst_score, hurst_consistent = score_hurst(h_val)
-    vr_score, vr_consistent = score_vr(vr_result)
-    adf_score, adf_consistent = score_adf(adf_result)
-
-    score += hurst_score + vr_score + adf_score
-    consistency += sum([hurst_consistent, vr_consistent, adf_consistent])
-
-    # --- Half-life scoring ---
-    attributes = {
-        'h_val': h_val,
-        'vr_result': vr_result,
-        'adf_result': adf_result,
-        'half_life': half_life
-    }
-    half_life_duration = determine_half_life_quantile(attributes)
-    half_life_score = calc_half_life_score(half_life_duration)
-    score += half_life_score
-
-
-    # --- Bonus for full agreement ---
-    if score > 0 and consistency == 3:
-        score += 20
-
-    normalised_score = round((score / 95.0) * 100, 2)
-
-    component_scores = {
-        'hurst': hurst_score / 20,
-        'vr': vr_score / 15,
-        'adf': adf_score / 20,
-        'half_life': half_life_score / 20
-    }
-    mean_rev_stats = {
-        'attributes': attributes,
-        'mean_rev_score': score,
-        'component_scores': component_scores,
-        'normalised_score': normalised_score,
-        'half_life_duration': half_life_duration,
-        'asset': asset,
-        'time_frame': time_frame,
-        'start_date': start_date,
-        'end_date': end_date,
-    }
-    if info_output:
-        info_mean_rev_analysis(mean_rev_stats)
-
-    return mean_rev_stats
+    return 10
 
 # Calculation of the half life of mean reversion for a given time series
 
@@ -134,48 +66,6 @@ def calculate_half_life(series):
         'HalfLife_WithIntercept': half_life_with_intercept,
         'HalfLife_NoIntercept': half_life_no_intercept
     }
-
-# Determines half lives using quantiles
-def determine_half_life_quantile(attributes, reference_distribution=None):
-    if reference_distribution is not None:
-        q25 = np.percentile(reference_distribution, 25)
-        q50 = np.percentile(reference_distribution, 50)
-        q75 = np.percentile(reference_distribution, 75)
-        hl_with = attributes['half_life']['HalfLife_WithIntercept']
-        hl_without = attributes['half_life']['HalfLife_NoIntercept']
-
-        if hl_with < q25 or hl_without < q25:
-            return "SHORT"
-        elif hl_with < q50 or hl_without < q50:
-            return "MEDIUM"
-        elif hl_with < q75 or hl_without < q75:
-            return "LONG"
-        else:
-            return "TOO_LONG"
-    else:
-        short_boundary = 15
-        medium_boundary = 32
-        long_boundary = 52
-        hl_with = attributes['half_life']['HalfLife_WithIntercept']
-        hl_without = attributes['half_life']['HalfLife_NoIntercept']
-        if hl_with < short_boundary or hl_without < short_boundary:
-            return "SHORT"
-        elif hl_with < medium_boundary or hl_without < medium_boundary:
-            return "MEDIUM"
-        elif hl_with < long_boundary or hl_without < long_boundary:
-            return "LONG"
-        else:
-            return "TOO_LONG"
-
-# Based on the half life duration, generate a score
-def calc_half_life_score(duration_label):
-    scores = {
-        "SHORT": 25,
-        "MEDIUM": 15,
-        "LONG": 5,
-        "TOO_LONG": 0
-    }
-    return scores.get(duration_label, None)
 
 # infos mean reversion statistics in a readable manner
 def info_mean_rev_analysis(stats):

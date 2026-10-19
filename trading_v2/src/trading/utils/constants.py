@@ -35,14 +35,8 @@ TIME_FRAMES = {
 }
 
 # List of currency pairs to fetch data for
-PAIRS = [
-    # Major Pairs
-    "EUR_USD", "USD_JPY", "GBP_USD", "AUD_USD", 
-    "USD_CHF", "USD_CAD", "NZD_USD",
-    
-    # Metals
-    "XAU_USD"
-]
+PAIRS = ["EUR_USD", "GBP_USD", "AUD_USD", "NZD_USD", "USD_CAD", "USD_CHF", "USD_JPY",
+         "EUR_GBP", "EUR_JPY", "GBP_JPY", "EUR_CHF", "AUD_JPY", "EUR_AUD", "AUD_NZD"]
 
 TICKERS = [
     # US stocks

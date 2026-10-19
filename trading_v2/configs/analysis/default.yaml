@@ -1,0 +1,17 @@
+symbols:
+  - EUR_USD
+  - GBP_USD
+  - AUD_USD
+  - NZD_USD
+  - USD_CAD
+  - USD_CHF
+  - USD_JPY
+#  - AUD_JPY
+#  - AUD_NZD
+#  - EUR_AUD
+#  - EUR_CHF
+#  - EUR_GBP
+#  - EUR_JPY
+#  - GBP_JPY
+years: [2022, 2023, 2024, 2025, 2026] #[2005, 2006, 2007, 2008, 2009, 2010]
+timeframe: M30
