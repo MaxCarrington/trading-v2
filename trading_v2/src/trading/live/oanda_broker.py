@@ -75,6 +75,11 @@ class OandaBroker:
         p = response["prices"][0]
         return float(p["bids"][0]["price"]), float(p["asks"][0]["price"])
 
+    def units_precision(self, pair):
+        # how many decimals OANDA accepts for this instrument's units (0 for FX, often 1 for index CFDs)
+        response = self.client.request(accounts.AccountInstruments(self.account_id, params={"instruments": pair}))
+        return int(response["instruments"][0]["tradeUnitsPrecision"])
+
     def pending_orders(self, pair):
         response = self.client.request(orders.OrdersPending(self.account_id))
         return [o for o in response["orders"] if o.get("instrument") == pair]
@@ -105,7 +110,7 @@ class OandaBroker:
         data = {"order": {
             "type": "MARKET",
             "instrument": pair,
-            "units": str(int(units)),
+            "units": str(units if isinstance(units, float) else int(units)),
             "timeInForce": "FOK",
             "positionFill": "DEFAULT",
         }}

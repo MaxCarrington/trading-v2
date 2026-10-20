@@ -6,9 +6,12 @@
 # Costs: commission_pct per side (ETF).
 #
 # With no options this is the frozen rule tested on SPX500 vs the 30y bond. Extras (all off by default):
+#   --europe        EU50, FR40, NL25, ESPIX, CH20 vs the Bund (same split and dashboard as --all)
+#   --everything    --all and --europe together, 8 markets
 #   --all           S&P 500, Germany and UK together: the account is split equally between them (returns in each
 #                   market's own currency, i.e. as if currency-hedged); one dashboard with every market
 #   --markets       your own list instead of --all, e.g. SPX500_USD:USB30Y_USD,UK100_GBP:UK10YB_GBP
+#                   (a bond ending in _YIELD is built from data/long_history yields, e.g. CH20_CHF:CH10Y_YIELD)
 #   --sizing vol    size = target_vol / last 20 days' volatility (capped at --max_size)
 #   --sizing gap    size = |gap| / 4% (a 2% gap = 0.5x, 4% = 1x, 6%+ = 1.5x cap)
 #   --leverage 1.5  multiplies every size
@@ -20,6 +23,7 @@
 #   python scripts/month_end_stocks_bonds.py --start 2005 --end 2018                                  (frozen SPX rule)
 #   python scripts/month_end_stocks_bonds.py --stock DE30_EUR --bond DE10YB_EUR --start 2005 --end 2026
 #   python scripts/month_end_stocks_bonds.py --all --start 2005 --end 2026
+#   python scripts/month_end_stocks_bonds.py --europe --start 2005 --end 2026
 #   python scripts/month_end_stocks_bonds.py --source long --long_stock SPY --bond DGS30 --start 1993 --end 2004
 #   python scripts/month_end_stocks_bonds.py --start 2005 --end 2018 --sizing vol --cash
 import os
@@ -33,11 +37,15 @@ sys.path.insert(0, os.path.join(ROOT, "src"))
 from trading.backtesting.risk_metrics import account_metrics
 
 ALL_MARKETS = "SPX500_USD:USB30Y_USD,DE30_EUR:DE10YB_EUR,UK100_GBP:UK10YB_GBP"
+# OANDA has no French, Dutch, Spanish or Swiss bond, so these use the German Bund (a rough stand-in for CH20)
+EUROPE_MARKETS = "EU50_EUR:DE10YB_EUR,FR40_EUR:DE10YB_EUR,NL25_EUR:DE10YB_EUR,ESPIX_EUR:DE10YB_EUR,CH20_CHF:DE10YB_EUR"
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--stock", default="SPX500_USD")
 parser.add_argument("--bond", default="USB30Y_USD")
 parser.add_argument("--all", action="store_true")
+parser.add_argument("--europe", action="store_true", help="the 5 other European indices vs the Bund")
+parser.add_argument("--everything", action="store_true", help="--all plus --europe: 8 markets")
 parser.add_argument("--markets", default=None)
 parser.add_argument("--start", type=int, default=2005)
 parser.add_argument("--end", type=int, default=2018)
@@ -104,7 +112,10 @@ def run_market(stock_name, bond_name):
     if args.source == "long":
         stock, bond, currency = load_long_stock(), load_long_bond(bond_name, 30 if "30" in bond_name else 10), "USD"
     else:
-        stock, bond, currency = load_oanda_close(stock_name), load_oanda_close(bond_name), stock_name.split("_")[-1]
+        # a bond name ending in _YIELD (e.g. CH10Y_YIELD) is built from daily yields in data/long_history
+        bond = load_long_bond(bond_name[:-6], 30 if "30" in bond_name else 10) if bond_name.endswith("_YIELD") \
+            else load_oanda_close(bond_name)
+        stock, currency = load_oanda_close(stock_name), stock_name.split("_")[-1]
     px = pd.concat({"stock": stock, "bond": bond}, axis=1).dropna()
     px = px[px.index.dayofweek < 5]
     stock_ret = px.stock.pct_change()
@@ -210,10 +221,11 @@ def report(name, bond_name, t, daily, in_trade, px, groups, days):
     print(f"random baseline mean {np.mean(means):+.3f}%/trade; strategy beats {100 * (np.array(means) < t.profit.mean()).mean():.0f}% of random runs")
 
 
-if args.all or args.markets:
+if args.all or args.markets or args.europe or args.everything:
     if args.source == "long":
-        sys.exit("--all / --markets only work with OANDA data (the long history is S&P 500 only)")
-    markets = [m.split(":") for m in (args.markets or ALL_MARKETS).split(",")]
+        sys.exit("--all / --europe / --everything / --markets only work with OANDA data (the long history is S&P 500 only)")
+    chosen = args.markets or (f"{ALL_MARKETS},{EUROPE_MARKETS}" if args.everything else EUROPE_MARKETS if args.europe else ALL_MARKETS)
+    markets = [m.split(":") for m in chosen.split(",")]
 else:
     markets = [(args.long_stock if args.source == "long" else args.stock, args.bond)]
 

@@ -1,8 +1,13 @@
-# Paper trading the month-end stocks vs bonds trade on the OANDA practice account
-stock: "SPX500_USD"
-bond: "USB30Y_USD"
+# Paper trading the month-end stocks vs bonds trade on the OANDA practice account (4 markets, 1/4 of the balance each)
+markets:
+  - {stock: "SPX500_USD", bond: "USB30Y_USD", calendar: "NYSE"}
+  - {stock: "DE30_EUR",   bond: "DE10YB_EUR", calendar: "XETRA"}
+  - {stock: "UK100_GBP",  bond: "UK10YB_GBP", calendar: "LSE"}
+  # Swiss bond yields are not available live (SNB data lags by months), so CH20 uses the Bund like the
+  # --europe backtest (t 4.37); against the real Swiss 10y yield it tested t 4.54
+  - {stock: "CH20_CHF",   bond: "DE10YB_EUR", calendar: "SIX"}
 threshold: 0.02        # 2% month-to-date gap between stocks and bonds
 days_before: 4         # signal day = 4 trading days before the last trading day of the month
 days_after: 3          # "after" trades exit at the close of the 3rd trading day of next month
-invest_fraction: 0.99  # share of the balance put into the trade (like buying the ETF with all the cash)
+invest_fraction: 0.99  # share of each market's third of the balance put into its trade
 output_dir: "results/paper_month_end"
