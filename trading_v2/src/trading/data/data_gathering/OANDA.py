@@ -13,7 +13,8 @@ from trading.utils.logger import info, warning, error
 
 load_dotenv()
 
-INDICES = {"SPX500_USD", "DE30_EUR", "UK100_GBP", "JP225_USD", "NAS100_USD", "US30_USD"}
+INDICES = {"SPX500_USD", "DE30_EUR", "UK100_GBP", "JP225_USD", "NAS100_USD", "US30_USD",
+           "EU50_EUR", "FR40_EUR", "NL25_EUR", "ESPIX_EUR", "CH20_CHF"}
 MAX_CANDLES = 5000
 
 client = API(

@@ -7,6 +7,7 @@ from trading.strategies.london_breakout_v1_5 import london_breakout_v1_5
 from trading.strategies.london_breakout_v1_6 import london_breakout_v1_6
 from trading.strategies.fx_momentum_v1_0 import fx_momentum_v1_0
 from trading.strategies.index_mean_reversion_v1_0 import index_mean_reversion_v1_0
+from trading.strategies.index_dip_v1_0 import index_dip_v1_0
 from trading.strategies.momentum_v1_2 import momentum_strategy_v1_2
 from trading.strategies.momentum_v1_3 import momentum_strategy_v1_3
 from trading.utils.logger import start_log, info, warning, error
@@ -35,6 +36,8 @@ def get_strategy(strategy_name: str):
         return fx_momentum_v1_0
     elif strategy_name == "index_mean_reversion_v1.0":
         return index_mean_reversion_v1_0
+    elif strategy_name == "index_dip_v1.0":
+        return index_dip_v1_0
     else:
         raise ValueError(f'Invalid strategy name: {strategy_name}')
 
@@ -70,6 +73,8 @@ def get_params(config):
     elif config.get("strategy") == "fx_momentum_v1.0":
         return read_params(config)
     elif config.get("strategy") == "index_mean_reversion_v1.0":
+        return read_params(config)
+    elif config.get("strategy") == "index_dip_v1.0":
         return read_params(config)
     else:
         raise ValueError(f"Invalid strategy name: {(config.get('strategy'))}")

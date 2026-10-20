@@ -1,0 +1,8 @@
+# Paper trading the month-end stocks vs bonds trade on the OANDA practice account
+stock: "SPX500_USD"
+bond: "USB30Y_USD"
+threshold: 0.02        # 2% month-to-date gap between stocks and bonds
+days_before: 4         # signal day = 4 trading days before the last trading day of the month
+days_after: 3          # "after" trades exit at the close of the 3rd trading day of next month
+invest_fraction: 0.99  # share of the balance put into the trade (like buying the ETF with all the cash)
+output_dir: "results/paper_month_end"

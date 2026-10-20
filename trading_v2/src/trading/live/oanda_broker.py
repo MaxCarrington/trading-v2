@@ -98,8 +98,9 @@ class OandaBroker:
         }}
         return self.client.request(orders.OrderCreate(self.account_id, data=data))
 
-    def market_order(self, pair, units, stop_loss):
+    def market_order(self, pair, units, stop_loss=None):
         # used when price is already past the entry level (the backtest fills these at the bar's open)
+        # stop_loss=None sends the order without a stop loss (the month-end trade has none)
         fmt = price_format(pair)
         data = {"order": {
             "type": "MARKET",
@@ -107,8 +108,9 @@ class OandaBroker:
             "units": str(int(units)),
             "timeInForce": "FOK",
             "positionFill": "DEFAULT",
-            "stopLossOnFill": {"price": fmt.format(stop_loss), "timeInForce": "GTC"},
         }}
+        if stop_loss is not None:
+            data["order"]["stopLossOnFill"] = {"price": fmt.format(stop_loss), "timeInForce": "GTC"}
         return self.client.request(orders.OrderCreate(self.account_id, data=data))
 
     def cancel_pending(self, pair):

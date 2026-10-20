@@ -141,6 +141,27 @@ def build_dashboard(run_dir, data_list, params, open_browser=True):
                                 for k, v in metrics.items())
         stats.update({f"Account {k}": v for k, v in metrics.items()})
 
+        # Optional benchmark, e.g. params["benchmark"] = {"name": "S&P 500 buy and hold", "price": <daily close Series>}
+        benchmark = params.get("benchmark")
+        if benchmark is not None:
+            bench = benchmark["price"].reindex(account.index, method="ffill").bfill()
+            bench = params["starting_capital"] * bench / bench.iloc[0]
+            traces = []
+            for series, label, colour in [(account, "strategy", "royalblue"), (bench, benchmark["name"], "grey")]:
+                x = series.index.strftime("%Y-%m-%d").tolist()
+                traces.append({"x": x, "y": (100 * (series / series.iloc[0] - 1)).round(2).tolist(), "name": f"{label} equity",
+                               "type": "scattergl", "mode": "lines", "line": {"color": colour}, "yaxis": "y2"})
+                traces.append({"x": x, "y": (100 * (series / series.cummax() - 1)).round(2).tolist(), "name": f"{label} drawdown",
+                               "type": "scattergl", "mode": "lines", "line": {"color": colour}, "fill": "tozeroy", "yaxis": "y3"})
+            charts.insert(0, ("bench", f"Account vs {benchmark['name']}: return and drawdown (%)", traces,
+                              {"height": 550, "hovermode": "x unified", "margin": {"t": 30},
+                               "yaxis2": {"title": "return %", "domain": [0.35, 1]},
+                               "yaxis3": {"title": "drawdown %", "domain": [0, 0.3]}}))
+            bench_metrics = account_metrics(daily_returns_from_equity(bench), 252)
+            account_cells += "".join(f"<div class='stat' style='background:#f3f3f3'><div class='label'>{benchmark['name']}: {k}</div>"
+                                     f"<div class='value'>{fmt(v)}</div></div>" for k, v in bench_metrics.items()
+                                     if k in ("CAGR %", "Sharpe", "Max drawdown %", "Calmar", "Ulcer index"))
+
     # Stats table with one row per pair
     pair_stats = {pair: compute_stats(trades[trades["asset"] == pair].reset_index(drop=True))
                   for pair in pairs if (trades["asset"] == pair).sum() > 1}
@@ -181,6 +202,10 @@ def build_dashboard(run_dir, data_list, params, open_browser=True):
 {chart_js}</script></body></html>"""
 
     path = os.path.join(run_dir, "dashboard.html")
+    unit = params.get("profit_unit", "pips")
+    if unit != "pips":
+        # strategies that measure profit in % of the account (e.g. month_end_stocks_bonds.py) relabel the page
+        html = html.replace("net pips per unit traded", f"net {unit} of the account per trade").replace("pips", unit)
     with open(path, "w") as f:
         f.write(html)
     info(f"Dashboard saved to {path}")
