@@ -1,0 +1,7 @@
+# Charts for one backtest run: account equity, drawdown and the trades placed
+# Run the backtest first (scripts/run_backtest.py), then point this at its folder in results/
+# Only the run's own trades.csv and the price data for the run's dates are used.
+strategy: london_breakout_v1.2
+run_id: latest                 # "latest" = newest run, or a folder name such as 20261020_091750
+zoom_start: null               # price chart window start (London date, e.g. "2005-03-07"); null = the run's first trade
+zoom_days: 14                  # how many days the price chart shows

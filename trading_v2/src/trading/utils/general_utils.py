@@ -21,7 +21,8 @@ def from_csv_to_df(file_name, keep_time_zone=False):
 
     return df
 
-def load_mid_ohlcv(path: str) -> pd.DataFrame:
+# keep_bid_ask=True also keeps the BidOpen..AskClose columns (for the bid_ask cost model)
+def load_mid_ohlcv(path: str, keep_bid_ask: bool = False) -> pd.DataFrame:
     raw = pd.read_csv(path, parse_dates=["Time"])
 
     # Case 1: New 15-column BAM format with Mid/Bid/Ask
@@ -45,6 +46,8 @@ def load_mid_ohlcv(path: str) -> pd.DataFrame:
 
         # Keep OHLCV + Spread for downstream
         cols = ["Time", "Open", "High", "Low", "Close", "Volume", "Spread"]
+        if keep_bid_ask:
+            cols += [f"{side}{p}" for side in ("Bid", "Ask") for p in ("Open", "High", "Low", "Close")]
         df = df[cols]
 
     else:

@@ -1,0 +1,28 @@
+strategy: "london_breakout_v1.2"
+
+provider: "OANDA"
+security_type: "forex"
+starting_capital: 10000
+margin_rate: 0.0333        # FX margin account in USD: 1:30 leverage (UK retail). Remove to use the old cash model
+
+costs:
+  model: intraday
+  spread_pips: {USD_JPY: 0.3}   # core spread 0.1 + markup 0.2
+  slippage_pips: 0.3
+  commission_pct: 0.003         # per side
+
+symbols:
+  - "USD_JPY"
+
+timeframe: "H1"
+start_date: "2005"
+end_date: "2006"
+
+parameters:
+  asian_start: 0
+  asian_end: 7
+  last_entry_time: 16
+  exit_hour: 20
+  stop_type: "other side"
+  risk_per_trade: 0.5
+  trend_ma_days: 20      # trend filter: only trade in the direction of the 20-day average

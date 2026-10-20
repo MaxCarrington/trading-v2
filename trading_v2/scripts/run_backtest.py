@@ -7,6 +7,7 @@ from trading.strategies.strategy_loader import get_strategy, get_params
 from trading.utils.general_utils import load_mid_ohlcv
 from trading.utils.logger import start_log, info, warning, error
 from trading.backtesting.metrics_report import generate_report
+from trading.backtesting.trade_dashboard import build_dashboard
 #--------------------------------------------------------------------------------
 # Capture command-line arguments
 # Argument 0 is the script name
@@ -29,8 +30,20 @@ def calc_slippage(prev_close, curr_open, slippage_multiplier):
 # Cost of one fill, in the same units as PnL (price x units).
 # costs = the "costs" section of the config (params["costs"]):
 #   model: "intraday"      -> half the spread + commission on every fill, plus slippage on market and stop fills
+#   model: "bid_ask"       -> buys fill at the ask and sells at the bid (real OANDA prices, so the spread is in the
+#                             fill price), plus commission on every fill and slippage on market and stop fills
 #   model: "overnight_gap" -> the old model: slippage = slippage_multiplier x overnight gap, on market orders only
 # If the config has no "costs" section, the old model is used, so older strategies behave exactly as before.
+def is_index(pair):
+    # index CFDs (SPX500_USD, DE30_EUR...): the first part is not a 3-letter currency
+    return len(pair.split("_")[0]) != 3
+
+def pip_size(pair):
+    # one "pip" in the config's spread/slippage: 1 point for indices, 0.01 for JPY pairs, 0.0001 otherwise
+    if is_index(pair):
+        return 1.0
+    return 0.01 if "JPY" in pair else 0.0001
+
 def fill_cost(units, price, pair, costs, prices, slippage_multiplier, slippage_on=True):
     if not units:
         return 0.0
@@ -38,12 +51,66 @@ def fill_cost(units, price, pair, costs, prices, slippage_multiplier, slippage_o
         if not slippage_on:
             return 0.0
         return abs(units) * calc_slippage(prices['prev_close'], prices['curr_open'], slippage_multiplier)
-    pip = 0.01 if "JPY" in pair else 0.0001
-    spread_pips = costs["spread_pips"].get(pair, costs["spread_pips"].get("default", 0.0))
+    pip = pip_size(pair)
+    if costs["model"] == "bid_ask":
+        spread_pips = 0.0          # already paid by filling at the ask / bid
+    else:
+        spread_pips = costs["spread_pips"].get(pair, costs["spread_pips"].get("default", 0.0))
     per_unit = spread_pips / 2 * pip + costs["commission_pct"] / 100 * price   # pay half the spread on each side
     if slippage_on:
         per_unit += costs["slippage_pips"] * pip
     return abs(units) * per_unit
+
+# --- FX margin account (used when the config sets margin_rate) ---
+# P&L comes out in the pair's quote currency (yen for USD_JPY); the account is in USD.
+def to_usd(amount, pair, price):
+    if is_index(pair):               # index CFDs: P&L stays in the index's own currency (run one index per account)
+        return amount
+    if pair.endswith("_USD"):        # EUR_USD, GBP_USD...: quote currency is already USD
+        return amount
+    if pair.startswith("USD_"):      # USD_JPY, USD_CAD...: divide by the price to get USD
+        return amount / price
+    # Cross pairs (NZD_JPY, CAD_JPY...): APPROXIMATE. Divides by the pair's own price, so the result is in the
+    # base currency (NZD, CAD...), treated as if it were USD. Pip results (trades.csv "profit") are exact;
+    # the USD balance is only roughly right. A proper fix needs the USD_JPY price loaded alongside.
+    return amount / price
+
+# USD value of a position, used for the margin check
+def notional_usd(units, pair, price):
+    if is_index(pair):
+        return abs(units) * price    # in the index's own currency
+    if pair.startswith("USD_"):
+        return abs(units)            # 1 unit of USD_JPY = 1 USD
+    if pair.endswith("_USD"):
+        return abs(units) * price    # 1 unit of EUR_USD = price USD
+    return abs(units)                # cross pairs: APPROXIMATE, 1 unit of NZD_JPY treated as 1 USD (see to_usd)
+
+# --- Overnight financing (swap), used when the config has a "financing" section (margin mode only) ---
+# Holding a position overnight earns the interest gap between the two currencies minus the broker's markup:
+# long EUR_USD earns EUR rate - USD rate - markup, short EUR_USD earns USD rate - EUR rate - markup (% a year).
+# Rates: FRED 3-month interbank rates in data/rates/<CCY>.csv (monthly). The previous month's value is used,
+# so the backtest never uses a rate before it was published.
+def load_rates(currencies):
+    rates = {}
+    for ccy in currencies:
+        if len(ccy) != 3:            # an index (SPX500...) earns no interest; holding it long costs the currency's rate
+            continue
+        df = pd.read_csv(os.path.join(constants.DATA_DIR, "rates", f"{ccy}.csv"), parse_dates=["observation_date"])
+        rates[ccy] = df.set_index("observation_date").iloc[:, 0].astype(float).sort_index()
+    return rates
+
+def rate_on(rates, ccy, time):
+    month_start = pd.Timestamp(time.year, time.month, 1)
+    return rates[ccy][rates[ccy].index < month_start].iloc[-1]
+
+def financing_usd(units, pair, price, days, time, rates, markup_pct):
+    if units == 0 or days <= 0:
+        return 0.0
+    base, quote = pair.split("_")
+    base_rate = rate_on(rates, base, time) if base in rates else 0.0  # indices: no interest (dividends ignored)
+    gap = base_rate - rate_on(rates, quote, time)                      # % a year earned by a long position
+    yearly = units * price * gap / 100 - abs(units) * price * markup_pct / 100   # in the quote currency
+    return to_usd(yearly * days / 365, pair, price)
 
 # Gets the previous close, open, high, low and current close, open, high, low
 def get_prices(prev_row, curr_row, next_row=None):
@@ -59,6 +126,10 @@ def get_prices(prev_row, curr_row, next_row=None):
         'curr_high':  curr_row['High'],
         'curr_low':   curr_row['Low'],
     }
+    if 'AskOpen' in curr_row:   # bid/ask data loaded (bid_ask cost model): buys use the ask, sells the bid
+        for side in ('Bid', 'Ask'):
+            for p in ('Open', 'High', 'Low'):
+                prices[f'curr_{side.lower()}_{p.lower()}'] = curr_row[f'{side}{p}']
     if next_row is not None:
         prices['next_open'] = next_row['Open']
         prices['next_high'] = next_row['High']  # optional but handy
@@ -90,10 +161,13 @@ def find_pnl(prices, old_pos, market_order,
     # --- Market order execution at next open with slippage cost at current open ---
     if market_order != 0:
         info(f"Trade type is MARKET ORDER with value: {market_order}")
-        cost = fill_cost(market_order, prices['curr_open'], pair, costs, prices, slippage_multiplier)
-        pnl += market_order * (prices['next_open'] - prices['curr_open']) - cost
+        fill_price = prices['curr_open']
+        if 'curr_ask_open' in prices:   # bid_ask model: buy at the ask, sell at the bid
+            fill_price = prices['curr_ask_open'] if market_order > 0 else prices['curr_bid_open']
+        cost = fill_cost(market_order, fill_price, pair, costs, prices, slippage_multiplier)
+        pnl += market_order * (prices['next_open'] - fill_price) - cost
         # Cash impact: executed “at current open” plus costs (R model)
-        money_spent += (market_order * prices['curr_open']) + cost
+        money_spent += (market_order * fill_price) + cost
         new_pos += market_order
 
     # --- Limit orders (each can fill once, valid for next day only) ---
@@ -136,6 +210,11 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
     portfolio_net_worth_list = []
 
     costs = params.get("costs")  # None -> old overnight-gap slippage model
+    margin_rate = params.get("margin_rate")  # None -> old cash model; e.g. 0.0333 = 1:30 leverage (FX margin account in USD)
+    financing = params.get("financing")      # None -> no swap; e.g. {markup_pct: 1.5}
+    if financing is not None:
+        rates = load_rates({c for pair in params["pairs"] for c in pair.split("_")})
+    time_index = data_list[0].index
 
     # Initialize persistent store (None initially)
     store = None
@@ -151,7 +230,10 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
         ]
 
         # 2) Compute info (no future fields)
-        portfolio_net_worth = balance + sum(current_pos[j] * curr_rows[j]['Open'] for j in range(num_series))
+        if margin_rate is not None:
+            portfolio_net_worth = balance   # margin account: open P&L is already in the balance
+        else:
+            portfolio_net_worth = balance + sum(current_pos[j] * curr_rows[j]['Open'] for j in range(num_series))
         # NOTE: named state_info (not "info") so it doesn't shadow the
         # trading.utils.logger.info() function used for logging below.
         state_info = {"balance": balance, "netWorth": portfolio_net_worth}
@@ -209,6 +291,34 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
             pnls[j] = res['pnl']
 
 
+        if margin_rate is not None:
+            # FX margin account: P&L is converted to USD and added to the balance every bar (marked to market),
+            # no cash is "spent" on a position. New trades are cancelled if the margin needed is more than the equity.
+            pnls_usd = [to_usd(pnls[j], params['pairs'][j], prices_list[j]['next_open']) for j in range(num_series)]
+            margin_needed = sum(notional_usd(new_positions[j], params['pairs'][j], prices_list[j]['next_open'])
+                                for j in range(num_series)) * margin_rate
+            if margin_needed > balance + sum(pnls_usd) and new_positions != current_pos:
+                warning(f"Not enough margin on period {i + 1}: trade cancelled", __file__)
+                new_positions = current_pos[:]
+                pnls_usd = [to_usd(base_pnls[j], params['pairs'][j], prices_list[j]['next_open']) for j in range(num_series)]
+            if financing is not None:   # swap on the positions held from this open to the next open
+                days = (time_index[i + 1] - time_index[i]).total_seconds() / 86400
+                for j in range(num_series):
+                    pnls_usd[j] += financing_usd(new_positions[j], params['pairs'][j], prices_list[j]['next_open'],
+                                                 days, time_index[i], rates, financing["markup_pct"])
+            balance += sum(pnls_usd)
+            current_pos = new_positions[:]
+            if any(abs(p) > 0 for p in current_pos):
+                pos_days += 1
+            for j in range(num_series):
+                pnl_lists[j].append(pnls_usd[j])
+            net_worth = balance
+            portfolio_net_worth_list.append(net_worth)
+            if net_worth <= 0:
+                warning(f"Bankrupt on period {i + 1}", __file__)
+                break
+            continue
+
         # Overspend check: cancel trades if insufficient cash
         if money_spent_total > balance:
             # revert to base pnl and old positions
@@ -261,7 +371,11 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
         final_exit_pnls.append(pnl_slip)
         final_exit_values.append(nw)
 
-    balance += sum(final_exit_pnls)
+    if margin_rate is not None:   # margin account: only the closing cost, converted to USD (P&L is already in the balance)
+        balance += sum(to_usd(final_exit_pnls[j], params['pairs'][j], data_list[j].iloc[-1]['Open']) for j in range(num_series))
+        final_exit_values = [0.0] * num_series
+    else:
+        balance += sum(final_exit_pnls)
     final_net_worth = sum(final_exit_values) + balance
     portfolio_net_worth_list.append(final_net_worth)
 
@@ -279,9 +393,10 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
     # Writing these to disk (and generating the metrics report) is the
     # caller's job — see run_backtest() below, which owns the run folder.
     all_trades = []
-    for symbol, trade_rec_obj in store["trade_records"].items():
-        df = trade_rec_obj.trade_records.copy()
-        all_trades.append(df)
+    for symbol, trade_rec_obj in store.get("trade_records", {}).items():  # older strategies
+        all_trades.append(trade_rec_obj.trade_records.copy())
+    for symbol, trades in store.get("trade_list", {}).items():  # London Breakout
+        all_trades.append(pd.DataFrame(trades))
 
     trades_df = pd.concat(all_trades, ignore_index=True) if all_trades else pd.DataFrame()
     if not trades_df.empty:
@@ -297,7 +412,10 @@ def backtest_live(data_list, strategy_function, params, slippage_multiplier, str
     }
 
 def close_out(prices, pos, slippage_multiplier, pair="", costs=None):
-    return -fill_cost(pos, prices['curr_open'], pair, costs, prices, slippage_multiplier)  # cost to liquidate via market
+    cost = fill_cost(pos, prices['curr_open'], pair, costs, prices, slippage_multiplier)  # cost to liquidate via market
+    if 'curr_ask_open' in prices:   # bid_ask model: closing also pays half the spread (P&L is marked at the mid)
+        cost += abs(pos) * (prices['curr_ask_open'] - prices['curr_bid_open']) / 2
+    return -cost
 
 def final_exit(prices, pos, slippage_multiplier, pair="", costs=None):
     pnl_slip = close_out(prices, pos, slippage_multiplier, pair, costs)
@@ -313,17 +431,20 @@ def check_limit_order(prices, limit_order, limit_price):
     execution_price = None
 
     # --- Check if limit order can execute ---
-    buy_condition = limit_order > 0 and prices['curr_low'] < (limit_price - eps)
-    sell_condition = limit_order < 0 and prices['curr_high'] > (limit_price + eps)
+    # bid_ask model: a buy limit fills when the ask trades below it, a sell limit when the bid trades above it
+    low = prices.get('curr_ask_low', prices['curr_low'])
+    high = prices.get('curr_bid_high', prices['curr_high'])
+    buy_condition = limit_order > 0 and low < (limit_price - eps)
+    sell_condition = limit_order < 0 and high > (limit_price + eps)
 
     if buy_condition or sell_condition:
         # --- Determine execution price ---
         if limit_order > 0:
             # Buy limit: execute at min(limit_price, current high)
-            execution_price = min(limit_price, prices['curr_high'])
+            execution_price = min(limit_price, prices.get('curr_ask_high', prices['curr_high']))
         else:
             # Sell limit: execute at max(limit_price, current low)
-            execution_price = max(limit_price, prices['curr_low'])
+            execution_price = max(limit_price, prices.get('curr_bid_low', prices['curr_low']))
 
         # --- Calculate PnL and cost ---
         pnl = limit_order * (prices['next_open'] - execution_price)
@@ -341,10 +462,11 @@ def check_stop_order(prices, stop_order, stop_price):
     money_spent = 0.0
     execution_price = None
 
-    if stop_order > 0 and prices['curr_high'] >= stop_price:
-        execution_price = max(prices['curr_open'], stop_price)
-    elif stop_order < 0 and prices['curr_low'] <= stop_price:
-        execution_price = min(prices['curr_open'], stop_price)
+    # bid_ask model: a buy stop triggers and fills on the ask, a sell stop on the bid (like OANDA)
+    if stop_order > 0 and prices.get('curr_ask_high', prices['curr_high']) >= stop_price:
+        execution_price = max(prices.get('curr_ask_open', prices['curr_open']), stop_price)
+    elif stop_order < 0 and prices.get('curr_bid_low', prices['curr_low']) <= stop_price:
+        execution_price = min(prices.get('curr_bid_open', prices['curr_open']), stop_price)
 
     if execution_price is not None:
         pnl = stop_order * (prices['next_open'] - execution_price)
@@ -360,16 +482,25 @@ def check_lengths(num_series, orders):
             raise ValueError(f"len({k})={len(orders[k])} != num_series={num_series}")
 
 def _load_series_for_pair(pair, params):
-    year       = params["year"]
-    timeframe  = params["timeframe"]
-    start_date = params["start_date"]
-    end_date   = params["end_date"]
-
     if params["security_type"] != "forex" or params["provider"] != "OANDA":
         raise NotImplementedError(
             f"No loader for provider={params['provider']}, "
             f"security_type={params['security_type']}"
         )
+
+    timeframe = params["timeframe"]
+    start_date = params["start_date"]
+    end_date = params["end_date"]
+    year = params.get("year")
+
+    if year is None:
+        frames = []
+        for y in range(int(start_date), int(end_date) + 1):
+            merged_file = os.path.join(constants.OANDA_FOREX_DATA_DIR, pair, str(y), timeframe,
+                                       "merged", f"{pair}_{y}.csv")
+            frames.append(load_mid_ohlcv(merged_file, keep_bid_ask=(params.get("costs") or {}).get("model") == "bid_ask"))
+        series = pd.concat(frames).sort_index()
+        return series[~series.index.duplicated()]
 
     # Always load the merged yearly file — it contains every bar fetched for
     # the year. Date-range slicing below uses the configured start/end dates.
@@ -478,6 +609,11 @@ def run_backtest(strategy, params, config_path=None):
 
     # 4. SAVE — everything this run produced lives together in run_dir:
     #    results/<strategy>/<run_id>/{config.yaml, trades.csv, metrics.json, report.html, figures/, run.log}
+    # Bar-by-bar P&L per pair (includes costs), used by the charts notebook
+    equity = pd.concat({pair: df["CumPnL"] for pair, df in zip(params["pairs"], pnl_dfs)}, axis=1)
+    equity.to_csv(os.path.join(run_dir, "equity.csv"))
+    info(f"Equity curve saved to {os.path.join(run_dir, 'equity.csv')}")
+
     trades_df = results.get("trades_df")
     if trades_df is not None and not trades_df.empty:
         trades_path = os.path.join(run_dir, "trades.csv")
@@ -485,6 +621,7 @@ def run_backtest(strategy, params, config_path=None):
         info(f"Trade records saved to {trades_path}")
 
         generate_report(run_dir)
+        build_dashboard(run_dir, data_list, params)   # dashboard.html: stats + interactive charts, opens in the browser
         info(f"Full run output saved to: {run_dir}")
     else:
         warning("No trade records generated — skipping report generation.", __file__)

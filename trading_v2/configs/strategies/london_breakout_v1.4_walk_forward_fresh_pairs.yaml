@@ -1,0 +1,51 @@
+# Fresh-pair walk-forward test for London Breakout v1.4: the same frozen process as the USD_JPY test,
+# on three yen crosses never used in research. Run ONCE with:
+#   python scripts/walk_forward.py --config strategies/london_breakout_v1.4_walk_forward_fresh_pairs.yaml
+#
+# Each test year: run every grid setting on the previous train_years years, pick the best by Sharpe,
+# then use that setting for the test year only. The out-of-sample result is all the test years joined together.
+# The process is frozen: don't change the grid, train_years or the selection after seeing the results.
+strategy: "london_breakout_v1.4"
+
+provider: "OANDA"
+security_type: "forex"
+starting_capital: 10000
+margin_rate: 0.0333
+
+costs:
+  model: intraday
+  spread_pips: {NZD_JPY: 0.9, CAD_JPY: 0.7, CHF_JPY: 0.9}   # estimated raw-account spreads (OANDA's are about 2x USD_JPY's)
+  slippage_pips: 0.3
+  commission_pct: 0.003
+
+symbols:
+  - "NZD_JPY"
+  - "CAD_JPY"
+  - "CHF_JPY"
+
+timeframe: "H1"
+# start_date / end_date are set by the script from the walk_forward section below
+
+skip_news: [NFP, CPI, FOMC]
+
+parameters:
+  asian_start: 0
+  asian_end: 7
+  last_entry_time: 12      # replaced by the grid
+  exit_hour: 18            # replaced by the grid
+  stop_type: "other side"
+  risk_per_trade: 0.5
+  trend_ma_days: 20        # replaced by the grid
+  trend_ma_type: "sma"
+  entry_buffer_pips: 4     # replaced by the grid
+
+walk_forward:
+  first_test_year: 2010
+  last_test_year: 2018
+  train_years: 2           # optimise on the 2 years before each test year
+  workers: 4               # backtests run at the same time (number of CPU cores to use)
+  grid:                    # every combination is tested (2 x 2 x 3 x 3 = 36)
+    last_entry_time: [12, 16]
+    exit_hour: [18, 20]
+    trend_ma_days: [10, 20, 50]
+    entry_buffer_pips: [0, 2, 4]

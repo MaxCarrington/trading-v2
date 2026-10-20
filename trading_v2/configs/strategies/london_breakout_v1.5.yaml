@@ -1,0 +1,32 @@
+strategy: "london_breakout_v1.5"
+
+provider: "OANDA"
+security_type: "forex"
+starting_capital: 10000
+margin_rate: 0.0333        # FX margin account in USD: 1:30 leverage (UK retail). Remove to use the old cash model
+
+costs:
+  model: bid_ask                # buy at OANDA's ask, sell at its bid (real historical spreads)
+  slippage_pips: 0.3            # on stop and market fills, on top of the spread
+  commission_pct: 0.0           # OANDA retail (spread-only) account: no commission
+  spread_pips: {}               # not used by bid_ask
+
+symbols:
+  - "USD_JPY"
+
+timeframe: "H1"
+start_date: "2005"
+end_date: "2018"
+
+skip_news: [NFP, CPI, FOMC]   # don't trade on these days
+
+parameters:
+  asian_start: 0
+  asian_end: 7
+  last_entry_time: 12    # chosen on 2007-2008
+  exit_hour: 18          # chosen on 2007-2008
+  stop_type: "other side"
+  risk_per_trade: 0.5
+  trend_ma_days: 20      # trend filter: only trade in the direction of the 20-day average
+  trend_ma_type: "sma"   # "sma" or "ema"
+  entry_buffer_pips: 4    # buy stop 4 pips above the range high, sell stop 4 pips below the low (chosen on 2007-2008)

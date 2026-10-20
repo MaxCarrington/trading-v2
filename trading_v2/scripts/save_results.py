@@ -28,6 +28,8 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from trading.utils.logger import info
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
