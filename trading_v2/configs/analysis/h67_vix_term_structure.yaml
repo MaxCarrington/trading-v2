@@ -1,0 +1,9 @@
+# H67 VIX term structure timing (151 Trading Strategies 7.2-7.3), research only
+# notebooks/hypotheses/h67_vix_term_structure.ipynb. Data: IBKR (VIX, VIX3M indices; SPY, SVXY adjusted)
+start_year: 2005          # research period (VIX3M only starts in 2009). Do not change to 2019+ until frozen.
+end_year: 2018
+stock: SPY
+short_vol: SVXY           # info only
+cost_per_side_%: 0.05
+n_tests: 51
+random_runs: 1000

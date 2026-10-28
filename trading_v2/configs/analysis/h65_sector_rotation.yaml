@@ -1,0 +1,19 @@
+# H65 sector momentum rotation (151 Trading Strategies 4.1), research only
+# notebooks/hypotheses/h65_sector_rotation.ipynb. Data: IBKR adjusted daily (scripts/ibkr_download.py)
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+
+sectors: [XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY]
+benchmark: SPY
+safe_asset: SHY           # short-term Treasuries, used by the two info-only variants
+
+# Rules (fixed before running)
+lookback_months: 12       # momentum from 12 months ago...
+skip_months: 1            # ...to 1 month ago
+top_n: 3
+cost_per_side_%: 0.05     # commission + slippage
+ma_days: 200              # 4.1.1 variant only
+
+# Pass rules
+n_tests: 49
+random_runs: 1000

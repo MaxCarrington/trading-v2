@@ -1,0 +1,82 @@
+# H94 gold H1 Bollinger Band breakout (notebooks/hypotheses/h94_gold_bb_breakout.ipynb), research only
+# Source: r/algotrading "Simple Bollinger Band Breakout Strategy - 7.5 Year Backtest on BTCUSD (H1)" (u/CoconutV1, 1lka4qh)
+start_year: 2005          # research period (gold H1 data starts March 2006). Do not change to 2019+ until rules are frozen.
+end_year: 2018
+symbol: XAU_USD
+atr_hours: 14
+adx_hours: 14
+slippage_%: 0.01          # per side, on top of half of OANDA's spread each side
+financing_markup_%: 2.5   # CFD financing per night held
+train_years: 4            # walk-forward: pick the setting with the best net t over the previous 4 years
+n_tests: 150              # ideas tested so far (H1 + M5 grids), for the luck-proof bar
+random_runs: 300
+risk_levels_%: [0.5, 1, 1.5]
+
+# Base rule = the post's rules (one trade at a time instead of up to 3)
+base:
+  bb_length: 42           # Bollinger Band length (hours)
+  bb_std: 2.5             # standard deviations
+  direction: both         # both / long / short
+  stop_mode: pct          # pct = stop and target in % of price; atr = in ATRs at the signal bar
+  sl: 1.5                 # stop loss (% or ATRs)
+  tp: 3.0                 # take profit (% or ATRs); null = no target
+  trail: null             # trailing stop distance (same units as sl); null = off
+  max_hours: 18           # time exit (post: 1075 minutes)
+  fakeout_exit: false     # exit at the first bar's close if it closes against the trade (comment by Skester96)
+  session: null           # [start, end] London hours for entries, e.g. [7, 20]; null = any hour
+  trend_hours: 0          # only trade with the trend: close vs SMA of the last N hours (0 = off; 480 = ~20 days)
+  adx_min: 0              # only enter when ADX(14) >= this (0 = off; post suggests ADX)
+  body_min: 0             # signal candle body >= this share of its range (0 = off; post suggests body size)
+
+# Step 2: change ONE thing at a time from the base rule
+one_at_a_time:
+  long only: {direction: long}
+  short only: {direction: short}
+  ATR stops 1.5/3: {stop_mode: atr, sl: 1.5, tp: 3.0}
+  ATR stops 2/4: {stop_mode: atr, sl: 2.0, tp: 4.0}
+  no target, 1.5% trail: {tp: null, trail: 1.5, max_hours: 120}
+  no target, 3 ATR trail: {stop_mode: atr, sl: 3.0, tp: null, trail: 3.0, max_hours: 120}
+  hold 36h: {max_hours: 36}
+  hold 72h: {max_hours: 72}
+  fakeout exit: {fakeout_exit: true}
+  London+NY session 07-20: {session: [7, 20]}
+  trend filter 20 days: {trend_hours: 480}
+  trend filter 100 days: {trend_hours: 2400}
+  ADX >= 25: {adx_min: 25}
+  body >= 50% of range: {body_min: 0.5}
+
+# Step 3: grid (every combination). Walk-forward picks from these.
+grid:
+  bb_length: [20, 42, 84]
+  bb_std: [2.0, 2.5, 3.0]
+  exits:                  # named exit styles
+    post 1.5%/3%: {stop_mode: pct, sl: 1.5, tp: 3.0, trail: null, max_hours: 18}
+    ATR 1.5/3: {stop_mode: atr, sl: 1.5, tp: 3.0, trail: null, max_hours: 36}
+    ATR 3 trail: {stop_mode: atr, sl: 3.0, tp: null, trail: 3.0, max_hours: 120}
+  filters:                # named entry filters
+    none: {}
+    session 07-20: {session: [7, 20]}
+    trend 20d: {trend_hours: 480}
+    fakeout exit: {fakeout_exit: true}
+
+drawdown_risk_%: 1        # risk per trade used for the drawdown report and charts (Cells 17-20)
+
+# Part 2: same hourly signals, trades handled on M5 bars (needs XAU_USD M5 2006-2018)
+m5:
+  base: {entry: h1_close, spread_max_ratio: 0}   # entry: h1_close (post) or early; spread_max_ratio: 0 = off
+  one_at_a_time:
+    early entry: {entry: early}
+    spread <= 1.5x median: {spread_max_ratio: 1.5}
+    spread <= 2.5x median: {spread_max_ratio: 2.5}
+    early + spread 1.5x: {entry: early, spread_max_ratio: 1.5}
+    body >= 50%: {body_min: 0.5}
+    early + body >= 50%: {entry: early, body_min: 0.5}
+    ATR stops 2/4: {stop_mode: atr, sl: 2.0, tp: 4.0}
+    London+NY session 07-20: {session: [7, 20]}
+  grid:
+    entry: [h1_close, early]
+    spread_max_ratio: [0, 1.5, 2.5]
+    bands: [[42, 2.5], [84, 2.5], [42, 3.0]]
+    exits:
+      post 1.5%/3%: {stop_mode: pct, sl: 1.5, tp: 3.0, trail: null, max_hours: 18}
+      ATR 2/4: {stop_mode: atr, sl: 2.0, tp: 4.0, trail: null, max_hours: 18}

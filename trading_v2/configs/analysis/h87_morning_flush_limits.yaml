@@ -1,0 +1,21 @@
+# H87: US 500 morning flush with a resting limit (notebooks/hypotheses/h87_morning_flush_limits.ipynb), research only
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+slippage_%: 0.005           # per side, on top of half of OANDA's spread each side
+financing_markup_%: 2.5   # CFD financing per night held: longs pay rate + 2.5%, shorts receive rate - 2.5%
+train_years: 4            # walk-forward: pick the setting with the best net t over the previous 4 years
+n_tests: 75               # ideas tested so far, for the luck-proof bar
+random_runs: 300
+ftmo_leverages: [1, 2, 3, 5, 10]   # position size as a multiple of the account, split across the markets
+fill_through_%: 0.005
+limit_window_minutes: 30
+trend_days: 200
+sessions:
+  SPX500_USD: [ny, "09:30", "16:00"]
+last_entry_time: "12:00"
+grid:
+  drop_pct: [0.75, 1.0, 1.5]
+  target_fraction: [0.5, 1.0]    # take profit halfway back to the open, or at the open
+base:
+  drop_pct: 1.0
+  target_fraction: 0.5

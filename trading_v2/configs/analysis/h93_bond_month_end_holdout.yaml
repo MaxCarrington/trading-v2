@@ -1,0 +1,18 @@
+# H93 bond month-end HOLDOUT 2023-2026 (notebooks/hypotheses/h93_bond_month_end_holdout.ipynb). Run ONCE (Max asked after validation failed).
+# Rule frozen 2026-10-23 (research/reddit_mining/bond_month_end_spec.md), research 2005-18: portfolio +0.18%/month, t 3.01, 12/14 yrs.
+start_year: 2023
+end_year: 2026
+days_before: 4                 # buy at the close 4 trading days before the last trading day of the month
+data_end: "2026-09-30"          # October 2026 is not finished yet
+instruments:                   # equal weight
+  TIP: {source: ibkr}
+  LQD: {source: ibkr}
+  USB30Y_USD: {source: oanda}  # long Treasury price (stands in for TLT)
+cost_round_trip_%: 0.08        # ETF: commission + spread + slippage
+validation_bar:                # set before running
+  min_t: 1.0                   # with 45 months a real edge of the research size gives t ~1.6
+  min_years_positive: 3        # of 4
+research_reference:
+  portfolio_%_per_month: 0.18
+  t: 3.01
+  years_positive: "12/14"

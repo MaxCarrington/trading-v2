@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Crash Watch</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1>AI Crash Watch</h1>
+      <p id="takeaway" class="muted">Connecting to your server…</p>
+    </div>
+    <div class="head-side">
+      <span id="conn" class="conn off">Offline</span>
+      <button id="notify" class="ghost">Turn on desktop alerts</button>
+    </div>
+  </header>
+  <p id="demo-banner" class="banner" hidden>Demo mode: every number here is made up. Add your keys to <code>.env</code> and run <code>npm start</code> for real data.</p>
+
+  <section class="tiles">
+    <div class="tile"><span class="l">Flashing</span><span class="v red-t" id="n-red">–</span></div>
+    <div class="tile"><span class="l">Early</span><span class="v amber-t" id="n-amber">–</span></div>
+    <div class="tile"><span class="l">Calm</span><span class="v green-t" id="n-green">–</span></div>
+    <div class="tile"><span class="l">Feeds</span><span class="feeds" id="feeds">–</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Your watchlist <span class="tag live">streaming</span></h2>
+    <p class="small muted"><span id="trend-summary">Loading price history…</span> Trend compares the price with its 50- and 200-day simple moving averages. London funds update every 2 minutes, 15 minutes delayed.</p>
+    <div class="tbl"><table class="watch"><thead><tr>
+      <th>Stock</th><th>Price</th><th>Today</th><th>Trend</th><th>vs 50-day</th><th>vs 200-day</th><th>From 1-yr high</th><th>1 month</th><th>3 months</th><th>6 months</th><th>Updated</th>
+    </tr></thead><tbody id="stocks"></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Alerts <span class="tag live">live</span></h2>
+    <ul id="alerts" class="alerts"><li class="muted small">No alerts yet. They appear here the moment a rule trips.</li></ul>
+  </section>
+
+  <section class="card">
+    <h2>Recession and credit triggers <span class="tag live">checked every 15 min</span></h2>
+    <div class="tbl"><table><thead><tr><th>Indicator</th><th>Latest</th><th>Rule</th><th>Status</th><th>Data date</th></tr></thead><tbody id="indicators"></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Warning signs without a free feed <span class="tag snap">manual</span></h2>
+    <p class="small muted">From <code>snapshot.json</code>. Last updated <span id="snap-date">–</span>.</p>
+    <div class="tbl"><table><thead><tr><th>Signal</th><th>Reading</th><th>Compare with</th><th>Status</th><th>As of</th></tr></thead><tbody id="snapshot"></tbody></table></div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Coming up <span class="tag snap">manual</span></h2>
+      <div class="tbl"><table><thead><tr><th>Date</th><th>In</th><th>Event</th><th>What to watch</th></tr></thead><tbody id="events"></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2>Latest SEC filings <span class="tag live">checked every 10 min</span></h2>
+      <div class="tbl"><table><thead><tr><th>Date</th><th>Company</th><th>Form</th></tr></thead><tbody id="filings"></tbody></table></div>
+    </section>
+  </div>
+  <p class="small muted">Educational only, not financial advice.</p>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+# H94 VALIDATION (notebooks/hypotheses/h94_gold_bb_breakout_validation.ipynb). Run ONCE. Rules frozen 2026-10-23.
+start_year: 2019
+end_year: 2022
+symbol: XAU_USD
+atr_hours: 14
+adx_hours: 14
+slippage_%: 0.01
+financing_markup_%: 2.5
+n_tests: 150
+random_runs: 300
+risk_levels_%: [0.5, 1, 1.5]
+drawdown_risk_%: 1
+
+# FROZEN A: the post's rule handled on M5 bars (research Cell 13 "M5 BASE")
+frozen:
+  bb_length: 42
+  bb_std: 2.5
+  entry: h1_close
+  direction: both
+  stop_mode: pct
+  sl: 1.5
+  tp: 3.0
+  trail: null
+  max_hours: 18
+  session: null
+  trend_hours: 0
+  adx_min: 0
+  body_min: 0
+  spread_max_ratio: 0
+  vol_min: 0
+
+# FROZEN B: same rule, only when gold's 20-day volatility > its past-year median (research Cell 22, decided before looking)
+frozen_vol:
+  bb_length: 42
+  bb_std: 2.5
+  entry: h1_close
+  direction: both
+  stop_mode: pct
+  sl: 1.5
+  tp: 3.0
+  trail: null
+  max_hours: 18
+  session: null
+  trend_hours: 0
+  adx_min: 0
+  body_min: 0
+  spread_max_ratio: 0
+  vol_min: 1.0
+
+validation_bar:           # set before running
+  min_t: 1.0
+  min_years_positive: 3   # of 4
+
+research_reference:       # M5 BASE, 2006-2018
+  trades: 1360
+  per year: 104.6
+  net % per trade: 0.0778
+  gross %: 0.1503
+  cost %: 0.0726
+  t: 2.99
+  win %: 51.4
+  profit factor: 1.24
+  years + %: 69.2
+  R per trade: 0.052
+
+research_reference_vol:   # rule B, 2006-2018
+  trades: 570
+  per year: 47.5
+  net % per trade: 0.1321
+  gross %: 0.2077
+  t: 2.75
+  win %: 52.5
+  profit factor: 1.35
+  years + %: 83.3
+  R per trade: 0.088

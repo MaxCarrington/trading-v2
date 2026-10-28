@@ -1,0 +1,28 @@
+# H64 multi-asset trend following (151 Trading Strategies 4.6 / 10.4), research only
+# notebooks/hypotheses/h64_multi_asset_trend.ipynb
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+
+# OANDA daily CFDs. Markets with no data are skipped and listed.
+markets:
+  commodities: [XAU_USD, XAG_USD, XPT_USD, XPD_USD, XCU_USD, WTICO_USD, BCO_USD, NATGAS_USD,
+                CORN_USD, WHEAT_USD, SOYBN_USD, SUGAR_USD]
+  indices:     [SPX500_USD, NAS100_USD, US30_USD, US2000_USD, DE30_EUR, UK100_GBP, JP225_USD,
+                AU200_AUD, HK33_HKD, EU50_EUR]
+  bonds:       [USB02Y_USD, USB05Y_USD, USB10Y_USD, USB30Y_USD, DE10YB_EUR, UK10YB_GBP]
+
+# Rules (fixed before running)
+lookback_days: 252        # signal = sign of the last 12 months' return (long if up, short if down)
+vol_days: 60              # each market sized to the same risk, using its last 60 days' volatility
+market_vol_%: 10          # each market's position aims for 10% a year volatility
+max_leverage: 5           # cap on any one market's position (bonds are very calm)
+portfolio_vol_%: 10       # whole portfolio scaled to 10% a year, using its own last year's volatility
+max_portfolio_leverage: 4
+
+# Costs
+slippage_%: 0.02          # per side, on top of half the spread
+financing_markup_%: 2.5   # OANDA CFD financing: longs pay rate + 2.5%, shorts receive rate - 2.5%
+
+# Pass rules
+n_tests: 48               # ideas tested so far, for the luck-proof bar
+random_runs: 1000

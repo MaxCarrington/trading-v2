@@ -1,0 +1,27 @@
+# H95 gold volatility-expansion trend (notebooks/hypotheses/h95_gold_vol_trend.ipynb), research only
+# Idea from H94: the gold breakout only made money when gold trended hard and was volatile.
+start_year: 2005          # research period (gold data starts 2005; first signals once the averages are warm)
+end_year: 2018
+symbol: XAU_USD
+slippage_%: 0.01          # per side, on top of half of OANDA's spread each side
+financing_markup_%: 2.5   # CFD financing per night held (on top of the USD rate)
+random_runs: 300
+train_years: 4            # walk-forward
+
+etf:                      # physical gold ETF version (no overnight financing)
+  commission_%: 0.03      # per side
+  spread_%: 0.02          # per side
+  fee_%_a_year: 0.15
+
+# The rule (fixed before running)
+base:
+  sma_days: 100           # uptrend = close above this average
+  vol_days: 20            # volatility = std of the last 20 daily returns
+  vol_median_days: 250    # ... compared with its median over the past 250 days
+  vol_min: 1.0            # busy = volatility above 1.0 x its median
+  use_trend: true
+  use_vol: true
+
+grid:                     # walk-forward only
+  sma_days: [50, 100, 200]
+  vol_min: [0.8, 1.0, 1.2]

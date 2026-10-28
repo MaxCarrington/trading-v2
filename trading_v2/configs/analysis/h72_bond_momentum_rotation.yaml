@@ -1,0 +1,10 @@
+# H72 bond momentum rotation (151 Trading Strategies 19.4), research only
+start_year: 2005          # research period (HYG/EMB/BWX start 2007). Do not change to 2019+ until frozen.
+end_year: 2018
+bonds: [LQD, HYG, EMB, BWX, TIP]
+lookback_months: 12
+skip_months: 1
+top_n: 2
+cost_per_side_%: 0.05
+n_tests: 56
+random_runs: 1000

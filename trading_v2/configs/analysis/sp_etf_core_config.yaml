@@ -1,0 +1,18 @@
+# S&P ETF core + month-end overlay
+# Data rules: research 2005-2018 | validation 2019-2022 (a few looks) | holdout 2023-2026 (once)
+start_date: "2005-01-01"
+end_date: "2026-12-31"
+etf_file: long_history/SPY.csv          # Yahoo SPY; "Adj Close" includes dividends
+etf_cost_%: 0.07                         # yearly ETF fee (e.g. CSPX/VUSA)
+month_end_trades: results/month_end_stocks_bonds/SPX500_USD_DE30_EUR_UK100_GBP_CH20_CHF_2005_2026_none/trades.csv
+markets: 4                               # each month-end market gets 1/4 of the account
+overlay_size: 1.0                        # 1.0 = same sizes as the paper bot
+financing_markup_%: 2.5                  # OANDA CFD long financing = USD rate + this, while a trade is open
+rates_file: rates/USD.csv                # FRED 3-month rate, used one month late (published late)
+starting_capital: 10000
+
+# ETF trend filter (rule fixed before testing): hold the ETF only when yesterday's close was above its moving average
+trend_filter: true                       # false = always hold the ETF (the original version)
+trend_ma_days: 200                       # length of the moving average on the ETF's Adj Close
+cash_rate: true                          # earn the USD 3-month rate while out of the ETF
+switch_cost_%: 0.05                      # cost each time we buy or sell the ETF (spread + commission)

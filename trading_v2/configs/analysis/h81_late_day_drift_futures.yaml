@@ -1,0 +1,24 @@
+# H81: end-of-day drift after a strong day (notebooks/hypotheses/h81_late_day_drift_futures.ipynb), research only, FUTURES COSTS
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+fixed_spread_points: {SPX500_USD: 0.25}   # one futures tick, at the old index levels
+# today's futures costs instead (index levels are 3-5x higher now, so a tick and a commission are a smaller %):
+# the "today's futures costs" cell re-runs the base rule and the walk-forward with these
+today_costs:
+  fixed_spread_%: {SPX500_USD: 0.004}   # one tick as % of today's price
+  commission_%: 0.002
+commission_%: 0.008     # per side (micro futures at the old index levels)
+dividend_yield_%: {SPX500_USD: 2.0}   # futures holders pay the rate minus dividends overnight (DAX already includes dividends)
+slippage_%: 0.005           # per side, on top of half the spread each side
+financing_markup_%: 0     # futures: no CFD markup; the rate is still charged per night
+train_years: 4            # walk-forward: pick the setting with the best net t over the previous 4 years
+n_tests: 92               # ideas tested so far, for the luck-proof bar
+random_runs: 300
+ftmo_leverages: [1, 2, 3, 5, 10]   # position size as a multiple of the account, split across the markets
+symbol: SPX500_USD
+grid:
+  move_min_pct: [0.5, 0.75, 1.0, 1.5]
+  check_time: ["14:30", "15:00"]     # New York
+base:
+  move_min_pct: 1.0
+  check_time: "15:00"

@@ -1,0 +1,30 @@
+# H92 daily trend following on many markets + mean reversion (notebooks/hypotheses/h92_daily_trend_many_markets.ipynb), research only
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+markets: [SPX500_USD, NAS100_USD, US30_USD, US2000_USD, DE30_EUR, UK100_GBP, JP225_USD, AU200_AUD, EU50_EUR, FR40_EUR,
+          CH20_CHF, ESPIX_EUR, NL25_EUR, HK33_HKD, XAU_USD, XAG_USD, XPT_USD, XPD_USD, XCU_USD, WTICO_USD, BCO_USD,
+          NATGAS_USD, CORN_USD, WHEAT_USD, SOYBN_USD, SUGAR_USD]
+asset_class: {SPX500_USD: indices, NAS100_USD: indices, US30_USD: indices, US2000_USD: indices, DE30_EUR: indices,
+              UK100_GBP: indices, JP225_USD: indices, AU200_AUD: indices, EU50_EUR: indices, FR40_EUR: indices,
+              CH20_CHF: indices, ESPIX_EUR: indices, NL25_EUR: indices, HK33_HKD: indices, XAU_USD: metals,
+              XAG_USD: metals, XPT_USD: metals, XPD_USD: metals, XCU_USD: metals, WTICO_USD: energy, BCO_USD: energy,
+              NATGAS_USD: energy, CORN_USD: grains, WHEAT_USD: grains, SOYBN_USD: grains, SUGAR_USD: grains}
+atr_days: 20
+stop_atr: 3                # initial stop (and the trail distance for the trail rule), in ATRs
+activation_atr: 2          # activation rule: trailing starts once the trade is 2 ATR in profit...
+activation_trail_atr: 2    # ...and then trails 2 ATR behind the best price
+fixed_hold_days: 40        # fixed rule: exit at the close after 40 days unless stopped
+slippage_%: 0.01           # per side, on top of half the spread each side
+financing_markup_%: 2.5    # CFD financing per night held
+mean_reversion: {trend_days: 200, rsi_days: 2, rsi_low: 10, rsi_high: 90, exit_days: 5, max_hold_days: 10}
+train_years: 4             # walk-forward: pick the setting with the best monthly t over the previous 4 years
+n_tests: 96
+random_runs: 200
+risk_per_trade_%: 0.25
+risk_levels_%: [0.1, 0.25, 0.5]
+grid:
+  lookback: [20, 55, 100]                   # days for the breakout channel
+  exit_rule: [trail, activation, fixed]
+base:
+  lookback: 55
+  exit_rule: trail

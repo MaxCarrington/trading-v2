@@ -1,0 +1,41 @@
+# H90 month-end on every index vs its best bond (notebooks/hypotheses/h90_month_end_all_markets.ipynb), research only
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+threshold_%: 2            # the frozen month-end rule
+days_before: 4
+days_after: 3
+commission_%: 0.03        # per side, as in the original research
+n_tests: 94
+random_runs: 300
+ftmo_leverages: [1, 1.5, 2, 3]
+risk_leverages: [1, 2]      # risk table: account at 1x and 2x (split across the markets)
+risk_chart_leverage: 2
+markets:                  # stock:bond. Bonds with a data/bonds/<name>.csv file (made by H89) use it; the rest come from OANDA
+  - SPX500_USD:USB30Y_USD
+  - NAS100_USD:USB30Y_USD
+  - US2000_USD:USB30Y_USD
+  - US30_USD:USB30Y_USD
+  - DE30_EUR:DE10YB_EUR
+  - EU50_EUR:DE10YB_EUR
+  - NL25_EUR:DE10YB_EUR
+  - ESPIX_EUR:DE10YB_EUR  # stand-in: no Spanish bond
+  - UK100_GBP:UK10YB_GBP
+  - JP225_USD:JGB10Y
+  - AU200_AUD:AUB10Y      # May 2013 on until the RBA historical file is added
+  - CH20_CHF:CH10Y
+  - FR40_EUR:FR10Y
+extra_pairs:              # information only (Cell 7d): US indices against the other US bonds
+  - SPX500_USD:USB10Y_USD
+  - SPX500_USD:USB05Y_USD
+  - SPX500_USD:USB02Y_USD
+  - NAS100_USD:USB10Y_USD
+  - NAS100_USD:USB05Y_USD
+  - NAS100_USD:USB02Y_USD
+  - US2000_USD:USB10Y_USD
+  - US2000_USD:USB05Y_USD
+  - US2000_USD:USB02Y_USD
+  - US30_USD:USB10Y_USD
+  - US30_USD:USB05Y_USD
+  - US30_USD:USB02Y_USD
+current_markets: [SPX500_USD, DE30_EUR, UK100_GBP, CH20_CHF]   # what the paper bot trades
+own_bond_markets: [JP225_USD, AU200_AUD, FR40_EUR]             # CH20 is already in current_markets

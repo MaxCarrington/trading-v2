@@ -1,0 +1,22 @@
+# h27 (idea #11): index month-end spillover. When the month-end stocks-vs-bonds signal fires, does USD move into month end?
+# Data rules: research 2005-2018 only | validation 2019-2022 and holdout 2023-2026 are not touched
+symbols: [EUR_USD, GBP_USD, USD_JPY]   # pairs traded
+usd_sign: {EUR_USD: -1, GBP_USD: -1, USD_JPY: 1}   # +1 when the pair goes up as USD gains, -1 when it goes down
+stock: SPX500_USD        # month-end signal, stock side (same as the live month-end strategy)
+bond: USB30Y_USD         # month-end signal, bond side
+timeframe: D             # daily bars, dated by the day they close (17:00 New York)
+years: [2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]   # research period only
+days_before: 4           # signal day = 4 trading days before the last trading day of the month (as the strategy)
+days_after: 3            # the strategy's "after" leg ends at the close of the 3rd trading day of next month
+threshold_%: 2.0         # the signal fires when |stock month-to-date return - bond month-to-date return| >= 2%
+# fixed variants (name: [which months, exit]); USD side = buy USD when gap <= -2%, sell USD when gap >= +2%
+variants:
+  base: [neg, month_end]           # the one that counts: gap <= -2%, buy USD from signal close to month-end close
+  pos_mirror: [pos, month_end]     # gap >= +2%: sell USD
+  all_months: [all, month_end]     # every month: USD direction = minus the sign of the gap
+  base_to_day3: [neg, day3]        # gap <= -2%, hold USD until the 3rd trading day of next month
+n_tests: 22              # ideas tested in this batch (for the luck-proof t bar)
+
+# Costs (shared helper): today's OANDA spread + slippage + swap
+slippage_pips: 0.3       # on entry and on exit
+swap_markup_%: 1.5       # OANDA's financing markup, % a year

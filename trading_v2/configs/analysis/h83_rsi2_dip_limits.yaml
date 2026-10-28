@@ -1,0 +1,25 @@
+# H83: daily RSI(2) dip buy with limit entries and exits (notebooks/hypotheses/h83_rsi2_dip_limits.ipynb), research only
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+slippage_%: 0.005           # per side, on top of half of OANDA's spread each side
+financing_markup_%: 2.5   # CFD financing per night held: longs pay rate + 2.5%, shorts receive rate - 2.5%
+train_years: 4            # walk-forward: pick the setting with the best net t over the previous 4 years
+n_tests: 71               # ideas tested so far, for the luck-proof bar
+random_runs: 300
+ftmo_leverages: [1, 2, 3, 5, 10]   # position size as a multiple of the account, split across the markets
+fill_through_%: 0.005
+limit_window_minutes: 30
+trend_days: 200
+sessions:
+  SPX500_USD: [ny, "09:30", "16:00"]
+  DE30_EUR: [frankfurt, "09:00", "17:30"]
+  UK100_GBP: [london, "08:00", "16:30"]
+rsi_period: 2
+exit_sma: 5
+max_hold_days: 5
+grid:
+  rsi_entry: [5, 10, 20]
+  limit_offset_pct: [0.05, 0.1, 0.2]
+base:
+  rsi_entry: 10
+  limit_offset_pct: 0.1

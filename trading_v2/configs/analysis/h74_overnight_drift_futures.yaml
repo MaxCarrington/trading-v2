@@ -1,0 +1,27 @@
+# H74: index overnight drift (notebooks/hypotheses/h74_overnight_drift_futures.ipynb), research only, FUTURES COSTS
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+fixed_spread_points: {SPX500_USD: 0.25, DE30_EUR: 1.0, UK100_GBP: 0.5}   # one futures tick, at the old index levels
+# today's futures costs instead (index levels are 3-5x higher now, so a tick and a commission are a smaller %):
+# the "today's futures costs" cell re-runs the base rule and the walk-forward with these
+today_costs:
+  fixed_spread_%: {SPX500_USD: 0.004, DE30_EUR: 0.004, UK100_GBP: 0.0055}   # one tick as % of today's price
+  commission_%: 0.002
+commission_%: 0.008     # per side (micro futures at the old index levels)
+dividend_yield_%: {SPX500_USD: 2.0, DE30_EUR: 0, UK100_GBP: 3.5}   # futures holders pay the rate minus dividends overnight (DAX already includes dividends)
+slippage_%: 0.005           # per side, on top of half the spread each side
+financing_markup_%: 0     # futures: no CFD markup; the rate is still charged per night
+train_years: 4            # walk-forward: pick the setting with the best net t over the previous 4 years
+n_tests: 89               # ideas tested so far, for the luck-proof bar
+random_runs: 300
+ftmo_leverages: [1, 2, 3, 5, 10]   # position size as a multiple of the account, split across the markets
+sessions:                 # market: [time zone, cash open, cash close] in local time
+  SPX500_USD: [ny, "09:30", "16:00"]
+  DE30_EUR: [frankfurt, "09:00", "17:30"]
+  UK100_GBP: [london, "08:00", "16:30"]
+grid:
+  exit_offset_bars: [0, 1, 2]     # exit at the open, or 30 / 60 minutes after it
+  day_filter: [none, after_down_day, after_up_day]
+base:
+  exit_offset_bars: 0
+  day_filter: none

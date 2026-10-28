@@ -1,0 +1,19 @@
+# H74: index overnight drift (notebooks/hypotheses/h74_overnight_drift.ipynb), research only
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+slippage_%: 0.005           # per side, on top of half of OANDA's spread each side
+financing_markup_%: 2.5   # CFD financing per night held: longs pay rate + 2.5%, shorts receive rate - 2.5%
+train_years: 4            # walk-forward: pick the setting with the best net t over the previous 4 years
+n_tests: 58               # ideas tested so far, for the luck-proof bar
+random_runs: 300
+ftmo_leverages: [1, 2, 3, 5, 10]   # position size as a multiple of the account, split across the markets
+sessions:                 # market: [time zone, cash open, cash close] in local time
+  SPX500_USD: [ny, "09:30", "16:00"]
+  DE30_EUR: [frankfurt, "09:00", "17:30"]
+  UK100_GBP: [london, "08:00", "16:30"]
+grid:
+  exit_offset_bars: [0, 1, 2]     # exit at the open, or 30 / 60 minutes after it
+  day_filter: [none, after_down_day, after_up_day]
+base:
+  exit_offset_bars: 0
+  day_filter: none

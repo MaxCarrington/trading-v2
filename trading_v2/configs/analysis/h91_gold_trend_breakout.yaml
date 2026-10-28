@@ -1,0 +1,20 @@
+# H91 gold trend-following breakout (notebooks/hypotheses/h91_gold_trend_breakout.ipynb), research only
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+symbol: XAU_USD
+atr_hours: 14
+slippage_%: 0.01          # per side, on top of half of OANDA's spread each side (stop orders)
+financing_markup_%: 2.5   # CFD financing per night held
+train_years: 4            # walk-forward: pick the setting with the best net t over the previous 4 years
+n_tests: 95
+random_runs: 300
+risk_per_trade_%: 1
+risk_levels_%: [0.5, 1, 1.5]
+grid:
+  lookback: [20, 55, 100]          # hours for the breakout channel
+  trail_atr: [2, 3, 4]             # trailing stop distance in ATRs
+  session_filter: [false, true]    # true = enter only 07:00-20:00 London
+base:
+  lookback: 55
+  trail_atr: 3
+  session_filter: false

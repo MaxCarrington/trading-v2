@@ -1,0 +1,11 @@
+# H68 risk parity (151 Trading Strategies 9.3 / 19.3), research only
+# notebooks/hypotheses/h68_risk_parity.ipynb. Data: IBKR adjusted daily (scripts/ibkr_download.py)
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+assets: [SPY, GLD, TIP, LQD]
+benchmark: SPY
+bond_benchmark: LQD       # for the 60/40 comparison
+vol_days: 60
+cost_per_side_%: 0.05
+n_tests: 52
+random_runs: 1000

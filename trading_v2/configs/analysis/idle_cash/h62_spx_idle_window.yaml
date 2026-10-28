@@ -1,0 +1,28 @@
+# h62 + h63: two S&P 500 CFD ideas for the OANDA cash buffer, traded only while the month-end strategy is dormant.
+# Data rules: research 2005-2018 only | validation 2019-2022 once, only if one passes. Rules fixed BEFORE the first run.
+symbol: SPX500_USD       # OANDA S&P 500 CFD, daily bars dated by the day they close (17:00 New York)
+years: [2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]
+
+# h62 pre-holiday: buy the close of the last trading day before a US market holiday, sell the next trading day's close
+# h63 dip buy (the r/algotrading rule, unchanged): close > 200-day SMA and (RSI(2) < 10 or 3 down closes in a row or IBS < 0.2);
+#     buy the close; sell at the first close above the 5-day SMA, after 10 days, or when the close is 8% below the entry
+sma_trend: 200
+rsi_days: 2
+rsi_entry: 10
+down_closes: 3
+ibs_entry: 0.2
+sma_exit: 5
+max_hold: 10
+stop_%: 8
+
+# The idle window = from the 4th trading day of the month to 5 trading days before the month's last trading day
+# (the month-end strategy holds from 4 days before the last day to the 3rd day of next month).
+# Base variant (the one that counts) = idle window only: entry inside it, and the dip trade is closed at the
+# close of the window's last day if still open. "All days" is shown for information only.
+
+# Costs (OANDA CFD)
+spread_points: 0.5       # median OANDA SPX500 spread 2016-18
+slippage_points: 0.3     # on entry and on exit
+financing_markup_%: 2.5  # long index CFD financing = USD 3-month rate + this, per night held
+rates_file: rates/USD.csv
+n_tests: 43              # ideas tested so far (for the luck-proof t bar)

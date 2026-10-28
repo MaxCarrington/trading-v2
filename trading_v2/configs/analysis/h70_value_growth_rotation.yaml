@@ -1,0 +1,10 @@
+# H70 value vs growth style rotation (151 Trading Strategies 3.3 / 3.7), research only
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+styles: [IWD, IWF]        # Russell 1000 Value, Russell 1000 Growth
+benchmark: SPY            # info only
+lookback_months: 12
+skip_months: 1
+cost_per_side_%: 0.05
+n_tests: 54
+random_runs: 1000

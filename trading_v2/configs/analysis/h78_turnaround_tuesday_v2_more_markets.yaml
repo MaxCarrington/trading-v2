@@ -1,0 +1,27 @@
+# H78 v2 more markets: Turnaround Tuesday on 6 more indices (robustness test) (notebooks/hypotheses/h78_turnaround_tuesday_v2_more_markets.ipynb), research only
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+slippage_%: 0.005           # per side, on top of half of OANDA's spread each side
+financing_markup_%: 2.5   # CFD financing per night held: longs pay rate + 2.5%, shorts receive rate - 2.5%
+train_years: 4            # walk-forward: pick the setting with the best net t over the previous 4 years
+n_tests: 76               # ideas tested so far, for the luck-proof bar
+random_runs: 300
+ftmo_leverages: [1, 2, 3, 5, 10]   # position size as a multiple of the account, split across the markets
+fill_through_%: 0.005     # the limit must be beaten by this much to count as filled
+limit_window_minutes: 30  # how long the limit order stays open
+vol_days: 20
+sessions:
+  NAS100_USD: [ny, "09:30", "16:00"]
+  US2000_USD: [ny, "09:30", "16:00"]
+  FR40_EUR: [frankfurt, "09:00", "17:30"]
+  EU50_EUR: [frankfurt, "09:00", "17:30"]
+  JP225_USD: [tokyo, "09:00", "15:00"]
+  AU200_AUD: [sydney, "10:00", "16:00"]
+grid:
+  monday_below_pct: [0, -0.5, -1.0]
+  limit_offset_pct: [0.02, 0.05, 0.1]
+  vol_filter: [false, true]
+base:
+  monday_below_pct: 0
+  limit_offset_pct: 0.05
+  vol_filter: false

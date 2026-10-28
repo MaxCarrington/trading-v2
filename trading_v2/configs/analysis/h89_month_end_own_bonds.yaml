@@ -1,0 +1,34 @@
+# H89 month-end vs each country's own 10-year bond (notebooks/hypotheses/h89_month_end_own_bonds.ipynb), research only
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+threshold_%: 2            # the frozen month-end rule
+days_before: 4
+days_after: 3
+commission_%: 0.03        # per side, as in the original research
+n_tests: 93
+random_runs: 300
+markets: [JP225_USD:JGB10Y, AU200_AUD:AUB10Y, CH20_CHF:CH10Y, FR40_EUR:FR10Y]
+bonds:
+  JGB10Y:                 # Japan, Ministry of Finance benchmark yields
+    column: "10Y"
+    files:
+      - {url: "https://www.mof.go.jp/english/policy/jgbs/reference/interest_rate/historical/jgbcme_all.csv", name: JGB10Y_all.csv}
+  AUB10Y:                 # Australia, RBA table F2, 10-year government bond
+    column: FCMYGBAG10D
+    files:                # older history first; the newer file wins where they overlap
+      - {url: "https://www.rba.gov.au/statistics/tables/xls-hist/f02dhist.xls", name: AUB10Y_hist.xls}
+      - {url: "https://www.rba.gov.au/statistics/tables/csv/f2-data.csv", name: AUB10Y_current.csv}
+  CH10Y:                  # Switzerland, SNB 10-year Confederation bond (copied from data/long_history/)
+    column: CH10Y
+    files:
+      - {name: CH10Y.csv}
+  FR10Y:                  # France, Banque de France TEC 10, daily (FM.D.FR.EUR.FR2.BB.FRMOYTEC10.HSTA), saved by hand
+    column: values        # no header row: notes on top, then one "date,yield" row per day ("-" = no price)
+    files:
+      - {name: FR10Y.csv}
+manual_pages:
+  CH10Y: "data/long_history/CH10Y.csv (or data.snb.ch, table rendoblid)"
+  FR10Y: "webstat.banque-france.fr, series FM.D.FR.EUR.FR2.BB.FRMOYTEC10.HSTA"
+
+  JGB10Y: "https://www.mof.go.jp/english/policy/jgbs/reference/interest_rate/index.htm"
+  AUB10Y: "https://www.rba.gov.au/statistics/tables/ (F2 Capital Market Yields - Government Bonds - Daily, current and historical)"

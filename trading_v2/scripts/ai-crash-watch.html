@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Crash Watch</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{--bg:#f4f6f7;--surface:#fff;--ink:#14212b;--muted:#5a6a75;--rule:#d5dde2;--accent:#0f5f73;
+--red:#b3261e;--red-soft:#f8e3e1;--amber:#8a5a00;--amber-soft:#f6ecd6;--green:#1f6b3a;--green-soft:#e0f0e5;
+--f-d:"IBM Plex Serif",Georgia,serif;--f-b:"IBM Plex Sans",system-ui,sans-serif;--f-m:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#0f161b;--surface:#16212a;--ink:#e3eaee;--muted:#93a3ae;--rule:#2a3943;--accent:#6cc3d6;
+--red:#ff8a80;--red-soft:#3a1d1b;--amber:#f0c060;--amber-soft:#382c12;--green:#7fd49a;--green-soft:#16301f;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-b);font-size:15px;line-height:1.5}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 16px 60px;display:flex;flex-direction:column;gap:20px}
+h1,h2{font-family:var(--f-d);margin:0;line-height:1.2}
+h1{font-size:1.9rem} h2{font-size:1.15rem}
+p{margin:0}
+a{color:var(--accent)}
+.muted{color:var(--muted)} .small{font-size:.82rem}
+.mono{font-family:var(--f-m);font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.tile .v{font-family:var(--f-d);font-size:1.5rem;font-variant-numeric:tabular-nums}
+.tile .l{font-size:.78rem;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;vertical-align:top;padding:7px 8px;border-bottom:1px solid var(--rule)}
+th{font-family:var(--f-m);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500}
+tr:last-child td{border-bottom:0}
+.pill{display:inline-block;font-family:var(--f-m);font-size:.7rem;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.red{background:var(--red-soft);color:var(--red)} .amber{background:var(--amber-soft);color:var(--amber)} .green{background:var(--green-soft);color:var(--green)} .grey{background:var(--rule);color:var(--muted)}
+.up{color:var(--green)} .down{color:var(--red)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input[type=password],input[type=text]{font:inherit;padding:6px 8px;border:1px solid var(--rule);border-radius:4px;background:var(--bg);color:var(--ink);min-width:0;flex:1 1 220px}
+button{font:inherit;padding:6px 12px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);cursor:pointer}
+button.ghost{background:transparent;color:var(--accent)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.live{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-m);font-size:.72rem;color:var(--muted)}
+.live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green)}
+.snap::before{background:var(--amber)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:6px">
+    <h1>AI Crash Watch</h1>
+    <p id="takeaway" class="muted">Loading…</p>
+    <p class="small muted">Live figures come from Alpha Vantage. Figures marked <span class="live snap">snapshot</span> are Claude's research as of 27 Oct 2026 and need a manual update. Educational only, not financial advice.</p>
+  </header>
+
+  <section class="card" id="setup">
+    <h2>Live data key</h2>
+    <p class="small muted">Get a free key at <a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener">alphavantage.co</a> (about 25 requests a day). The key is saved only in this browser. The page refreshes itself every 12 hours, using about 12 requests each time.</p>
+    <div class="bar">
+      <input id="key" type="password" placeholder="Paste your Alpha Vantage key" aria-label="Alpha Vantage API key" autocomplete="off">
+      <button id="save">Save and load</button>
+      <button id="refresh" class="ghost">Refresh now</button>
+      <span id="status" class="small muted"></span>
+    </div>
+  </section>
+
+  <section>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Live triggers <span class="live">live</span></h2>
+      <div class="tbl"><table id="live-tbl"><thead><tr><th>Indicator</th><th>Latest</th><th>Rule</th><th>Status</th><th>Date</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2>AI stocks <span class="live">live</span></h2>
+      <div class="tbl"><table id="q-tbl"><thead><tr><th>Ticker</th><th>Price</th><th>Day change</th><th>Trading day</th></tr></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Warning signs <span class="live snap">snapshot</span></h2>
+    <p class="small muted">Fuel makes a crash bigger, weak links are AI borrowers under strain, and triggers are what usually tips a market over.</p>
+    <div class="tbl"><table id="sig-tbl"><thead><tr><th>Signal</th><th>Type</th><th>Reading</th><th>Compare with</th><th>Status</th><th>As of</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Coming up <span class="live snap">snapshot</span></h2>
+      <div class="tbl"><table id="cat-tbl"><thead><tr><th>Date</th><th>In</th><th>Event</th><th>What to watch</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2>Earnings dates <span class="live">live</span></h2>
+      <p class="small muted">Next reports for the AI names on this page, from Alpha Vantage's earnings calendar.</p>
+      <div class="tbl"><table id="earn-tbl"><thead><tr><th>Date</th><th>In</th><th>Company</th><th>EPS estimate</th></tr></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+</div>
+
+<script>
+// ---- Snapshot data (Claude research, 27 Oct 2026). Edit these rows to update. ----
+const SIGNALS = [
+ ["Shiller CAPE (S&P 500)","Fuel","~41","Avg ~17; 2000 peak ~44","red","2026-10-19","https://finance.biggo.com/news/a001ee8f-57b4-4c2d-8cea-519f9c31f296"],
+ ["Top 10 weight in S&P 500","Fuel","~40%","2000 peak ~26%","red","2026-08-26","https://finance.biggo.com/news/2a62d354-d0ca-48a4-bd9f-5917b242e9c9"],
+ ["FINRA margin debt","Fuel","$1.50T (+77% since Apr 2025)","Jumps of 65%+ preceded 2000, 2008, 2022","red","2026-06-30","https://finance.biggo.com/news/2a62d354-d0ca-48a4-bd9f-5917b242e9c9"],
+ ["Debt share of hyperscaler capex","Fuel","32%","9% in FY24","red","2026-06-30","https://insight.factset.com/hyperscalers-tap-external-financing-as-ai-capex-outruns-cash-flow"],
+ ["CoreWeave 5-yr CDS","Weak links",">1,000 bps","1,000 bps = distress","red","2026-10-15","https://www.thedataletter.com/p/coreweaves-credit-scare-the-ai-debt"],
+ ["Oracle 5-yr CDS / rating","Weak links","~282 bps, BBB-","~108 bps in Nov 2025","amber","2026-10-20","https://www.thedataletter.com/p/coreweaves-credit-scare-the-ai-debt"],
+ ["Hyperscaler bond order coverage","Weak links","<2x","~5x in Feb 2026","amber","2026-07-17","https://www.forbes.com/sites/robertszczerba/2026/07/17/bond-investors-push-back-as-ai-debt-heads-toward-570-billion/"],
+ ["High-yield credit spread","Triggers","3.24%","Stress usually >5%","green","2026-10-05","https://buttondown.com/fairvalue/archive/fair-value-monday-october-5-2026/"]
+];
+const CATALYSTS = [
+ ["2026-10-21","Meta earnings","Done: beat, capex $135-145B; stock fell ~7% two days later"],
+ ["2026-10-28","Fed rate decision (2pm ET)","Hold vs. another 25bp hike"],
+ ["2026-10-28","Microsoft and Alphabet earnings","Cloud growth vs. capex; 2027 capex outlook"],
+ ["2026-10-29","Amazon earnings","AWS growth and free cash flow vs. ~$220B capex"],
+ ["2026-11-10","OpenAI ~$30B round (approx.)","Closes on time and size, or slips"],
+ ["2026-11-15","Anthropic IPO (approx.)","Pricing vs. $1.5-2T talk, first-day trading"],
+ ["2026-11-17","Nvidia earnings","Next-quarter outlook vs. ~$108B guide"]
+];
+const TICKERS = ["NVDA","MSFT","AMZN","META","ORCL","CRWV","QQQ"];
+const WATCH = new Set(["NVDA","MSFT","GOOGL","AMZN","META","ORCL","CRWV","AAPL","AMD","AVGO"]);
+const CACHE_HOURS = 12;
+
+// ---- Helpers ----
+const $ = (s) => document.querySelector(s);
+const store = {
+  get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const today = () => new Date(new Date().toDateString());
+const daysUntil = (d) => Math.round((new Date(d + "T00:00:00") - today()) / 864e5);
+const fmtDate = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"});
+const pill = (s, text) => `<span class="pill ${s}">${text}</span>`;
+const LABEL = {red:"Flashing", amber:"Early", green:"Calm", grey:"No data"};
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function av(params, asText) {
+  const key = store.get("avkey");
+  if (!key) throw new Error("No key");
+  const url = "https://www.alphavantage.co/query?" + new URLSearchParams({...params, apikey: key});
+  const res = await fetch(url);
+  const body = asText ? await res.text() : await res.json();
+  if (!asText && (body.Note || body.Information || body["Error Message"])) throw new Error(body.Note || body.Information || body["Error Message"]);
+  if (asText && body.trim().startsWith("{")) throw new Error(JSON.parse(body).Information || "Request refused");
+  return body;
+}
+function series(json) {
+  return (json.data || []).filter(r => r.value !== "." && r.value !== "").map(r => ({date: r.date, value: +r.value}));
+}
+
+// ---- Fetch everything (cached) ----
+async function loadLive(force) {
+  const cached = store.get("live");
+  if (!force && cached && (Date.now() - cached.at) < CACHE_HOURS * 36e5) return cached;
+  if (!store.get("avkey")) return cached;
+  $("#status").textContent = "Loading live data…";
+  const out = {at: Date.now(), quotes: {}, errors: []};
+  const step = async (name, fn) => { try { await fn(); } catch (e) { out.errors.push(name + ": " + e.message); } await sleep(1300); };
+  await step("10-yr yield", async () => out.y10 = series(await av({function:"TREASURY_YIELD", interval:"daily", maturity:"10year"})).slice(0, 30));
+  await step("2-yr yield", async () => out.y2 = series(await av({function:"TREASURY_YIELD", interval:"daily", maturity:"2year"})).slice(0, 30));
+  await step("Fed funds", async () => out.ff = series(await av({function:"FEDERAL_FUNDS_RATE", interval:"daily"})).slice(0, 10));
+  await step("Unemployment", async () => out.ur = series(await av({function:"UNEMPLOYMENT"})).slice(0, 16));
+  await step("Earnings calendar", async () => {
+    const csv = await av({function:"EARNINGS_CALENDAR", horizon:"3month"}, true);
+    const [head, ...lines] = csv.trim().split(/\r?\n/);
+    const cols = head.split(",");
+    out.earn = lines.map(l => { const c = l.split(","); return Object.fromEntries(cols.map((k, i) => [k, c[i]])); })
+      .filter(r => WATCH.has(r.symbol)).sort((a, b) => a.reportDate.localeCompare(b.reportDate));
+  });
+  for (const t of TICKERS) {
+    await step(t, async () => {
+      const q = (await av({function:"GLOBAL_QUOTE", symbol:t}))["Global Quote"];
+      if (!q || !q["05. price"]) throw new Error("no quote");
+      out.quotes[t] = {price: +q["05. price"], change: +q["09. change"], pct: q["10. change percent"], day: q["07. latest trading day"]};
+    });
+  }
+  // keep older values where a request failed
+  if (cached) for (const k of ["y10","y2","ff","ur","earn"]) if (!out[k] && cached[k]) out[k] = cached[k];
+  if (cached) for (const t of TICKERS) if (!out.quotes[t] && cached.quotes?.[t]) out.quotes[t] = cached.quotes[t];
+  store.set("live", out);
+  return out;
+}
+
+// ---- Rules for live triggers ----
+function sahm(ur) {
+  if (!ur || ur.length < 15) return null;
+  const v = ur.map(r => r.value); // newest first
+  const avg3 = (i) => (v[i] + v[i+1] + v[i+2]) / 3;
+  const now = avg3(0);
+  const low = Math.min(...Array.from({length: 12}, (_, i) => avg3(i + 1)));
+  return +(now - low).toFixed(2);
+}
+function liveRows(d) {
+  const rows = [];
+  const y10 = d?.y10?.[0], y2 = d?.y2?.[0];
+  if (y10 && y2) {
+    const s = Math.round((y10.value - y2.value) * 100);
+    rows.push(["Yield curve (10y − 2y)", (s >= 0 ? "+" : "") + s + " bps", "Inverted (<0) preceded past recessions", s < 0 ? "red" : s < 25 ? "amber" : "green", y10.date]);
+  } else rows.push(["Yield curve (10y − 2y)", "—", "Inverted (<0) preceded past recessions", "grey", "—"]);
+  rows.push(y10 ? ["10-yr Treasury yield", y10.value.toFixed(2) + "%", "Above 5% squeezes debt-funded buildout", y10.value >= 5 ? "amber" : "green", y10.date] : ["10-yr Treasury yield", "—", "Above 5% squeezes debt-funded buildout", "grey", "—"]);
+  const ff = d?.ff?.[0];
+  rows.push(ff ? ["Fed funds rate", ff.value.toFixed(2) + "%", "Hikes raise borrowing costs", (d.ff[9] && ff.value > d.ff[9].value) ? "amber" : "green", ff.date] : ["Fed funds rate", "—", "Hikes raise borrowing costs", "grey", "—"]);
+  const ur = d?.ur?.[0], sg = sahm(d?.ur);
+  rows.push(ur ? ["Unemployment (Sahm rule gap)", ur.value.toFixed(1) + "%" + (sg != null ? " (gap " + sg.toFixed(2) + ")" : ""), "Gap ≥ 0.50 has signalled recessions", sg == null ? "grey" : sg >= 0.5 ? "red" : sg >= 0.3 ? "amber" : "green", ur.date.slice(0, 7)] : ["Unemployment (Sahm rule gap)", "—", "Gap ≥ 0.50 has signalled recessions", "grey", "—"]);
+  return rows;
+}
+
+// ---- Render ----
+function render(d) {
+  const live = liveRows(d);
+  const all = [...SIGNALS.map(r => r[4]), ...live.map(r => r[3])];
+  const n = (s) => all.filter(x => x === s).length;
+  $("#takeaway").textContent = `${n("red")} warning signs are flashing, ${n("amber")} are early and ${n("green")} are calm.` + (n("green") ? " The classic recession triggers are mostly still quiet." : "");
+  $("#tiles").innerHTML = [["red","Flashing"],["amber","Early"],["green","Calm"]].map(([s, l]) => `<div class="tile"><span class="l">${l}</span><span class="v" style="color:var(--${s})">${n(s)}</span></div>`).join("")
+    + (d?.at ? `<div class="tile"><span class="l">Live data loaded</span><span class="v" style="font-size:1rem">${new Date(d.at).toLocaleString()}</span></div>` : "");
+
+  $("#live-tbl tbody").innerHTML = live.map(r => `<tr><td>${r[0]}</td><td class="mono">${esc(r[1])}</td><td class="small">${r[2]}</td><td>${pill(r[3], LABEL[r[3]])}</td><td class="mono small">${esc(r[4])}</td></tr>`).join("");
+
+  $("#q-tbl tbody").innerHTML = TICKERS.map(t => {
+    const q = d?.quotes?.[t];
+    if (!q) return `<tr><td class="mono">${t}</td><td>—</td><td>—</td><td>—</td></tr>`;
+    const cls = q.change >= 0 ? "up" : "down";
+    return `<tr><td class="mono">${t}</td><td class="mono">$${q.price.toFixed(2)}</td><td class="mono ${cls}">${q.change >= 0 ? "+" : ""}${q.change.toFixed(2)} (${esc(q.pct)})</td><td class="mono small">${esc(q.day)}</td></tr>`;
+  }).join("");
+
+  $("#sig-tbl tbody").innerHTML = SIGNALS.map(r => `<tr><td><a href="${r[6]}" target="_blank" rel="noopener">${r[0]}</a></td><td>${r[1]}</td><td class="mono">${r[2]}</td><td class="small">${r[3]}</td><td>${pill(r[4], LABEL[r[4]])}</td><td class="mono small">${fmtDate(r[5])}</td></tr>`).join("");
+
+  $("#cat-tbl tbody").innerHTML = CATALYSTS.map(r => { const k = daysUntil(r[0]); return `<tr><td class="mono small">${fmtDate(r[0])}</td><td class="mono small">${k < 0 ? "past" : k === 0 ? "today" : k + "d"}</td><td>${r[1]}</td><td class="small">${r[2]}</td></tr>`; }).join("");
+
+  const earn = d?.earn || [];
+  $("#earn-tbl tbody").innerHTML = earn.length ? earn.map(r => `<tr><td class="mono small">${fmtDate(r.reportDate)}</td><td class="mono small">${daysUntil(r.reportDate)}d</td><td>${esc(r.name || r.symbol)} <span class="muted mono small">${esc(r.symbol)}</span></td><td class="mono">${esc(r.estimate || "—")}</td></tr>`).join("")
+    : `<tr><td colspan="4" class="muted small">Add a key above to load upcoming earnings dates.</td></tr>`;
+}
+
+async function run(force) {
+  render(store.get("live"));
+  try {
+    const d = await loadLive(force);
+    render(d);
+    $("#status").textContent = !store.get("avkey") ? "No key saved yet; showing snapshot data only."
+      : d?.errors?.length ? "Loaded with some gaps: " + d.errors.slice(0, 2).join("; ") : "Live data up to date.";
+  } catch (e) {
+    $("#status").textContent = "Couldn't load live data: " + e.message;
+  }
+}
+
+$("#key").value = store.get("avkey") || "";
+$("#save").addEventListener("click", () => { store.set("avkey", $("#key").value.trim()); run(true); });
+$("#refresh").addEventListener("click", () => run(true));
+run(false);
+setInterval(() => run(false), 60 * 60 * 1000);
+</script>
+</body>
+</html>

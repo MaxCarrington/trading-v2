@@ -1,0 +1,13 @@
+# H88 month-end on new markets + bond side (notebooks/hypotheses/h88_month_end_more_markets.ipynb), research only
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+threshold_%: 2            # the frozen month-end rule
+days_before: 4
+days_after: 3
+commission_%: 0.03        # per side, as in the original research
+n_tests: 77
+random_runs: 300
+ftmo_leverages: [1, 1.5, 2, 3]
+new_stock_markets: [NAS100_USD:USB30Y_USD, US2000_USD:USB30Y_USD, JP225_USD:USB30Y_USD, AU200_AUD:USB30Y_USD]
+bond_side_markets: [SPX500_USD:USB30Y_USD, DE30_EUR:DE10YB_EUR, UK100_GBP:UK10YB_GBP]
+current_markets: [SPX500_USD:USB30Y_USD, DE30_EUR:DE10YB_EUR, UK100_GBP:UK10YB_GBP, CH20_CHF:DE10YB_EUR]

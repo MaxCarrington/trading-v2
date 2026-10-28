@@ -1,0 +1,17 @@
+# H73 commodity cross-sectional momentum (151 Trading Strategies 9.x / 10.x), research only
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+commodities: [XAU_USD, XAG_USD, XPT_USD, XPD_USD, XCU_USD, WTICO_USD, BCO_USD, NATGAS_USD,
+              CORN_USD, WHEAT_USD, SOYBN_USD, SUGAR_USD]
+lookback_months: 12
+skip_months: 1
+top_n: 3                  # long top 3, short bottom 3
+vol_days: 60
+market_vol_%: 10
+max_leverage: 5
+portfolio_vol_%: 10
+max_portfolio_leverage: 4
+slippage_%: 0.02
+financing_markup_%: 2.5
+n_tests: 57
+random_runs: 300          # slower loop than the others

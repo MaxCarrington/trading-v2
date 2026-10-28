@@ -1,0 +1,241 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>AI Crash Thesis Stress Test</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+/* Layout: single reading column (~720px) with full-width data tables; terminal-style mono for figures */
+:root{
+  --bg:#f4f6f7; --surface:#ffffff; --ink:#14212b; --muted:#5a6a75; --rule:#d5dde2;
+  --accent:#0f5f73; --accent-soft:#e1eef1;
+  --red:#b3261e; --red-soft:#f8e3e1; --amber:#8a5a00; --amber-soft:#f6ecd6; --green:#1f6b3a; --green-soft:#e0f0e5;
+  --f-display:"IBM Plex Serif",Georgia,serif; --f-body:"IBM Plex Sans",system-ui,-apple-system,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f161b; --surface:#16212a; --ink:#e3eaee; --muted:#93a3ae; --rule:#2a3943;
+  --accent:#6cc3d6; --accent-soft:#16323b;
+  --red:#ff8a80; --red-soft:#3a1d1b; --amber:#f0c060; --amber-soft:#382c12; --green:#7fd49a; --green-soft:#16301f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f161b; --surface:#16212a; --ink:#e3eaee; --muted:#93a3ae; --rule:#2a3943;
+  --accent:#6cc3d6; --accent-soft:#16323b;
+  --red:#ff8a80; --red-soft:#3a1d1b; --amber:#f0c060; --amber-soft:#382c12; --green:#7fd49a; --green-soft:#16301f; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6}
+.wrap{max-width:760px;margin:0 auto;padding-block:40px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.2;margin:0}
+h1{font-size:2.2rem;font-weight:600}
+h2{font-size:1.5rem;font-weight:600;margin-top:28px;padding-top:20px;border-top:1px solid var(--rule)}
+h3{font-size:1.1rem;font-weight:600;margin-top:8px}
+p{margin:0}
+ul,ol{margin:0;padding-left:1.25em;display:flex;flex-direction:column;gap:6px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:1.1rem;color:var(--ink)}
+.meta{font-size:.85rem;color:var(--muted)}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+sup a{font-family:var(--f-mono);font-size:.7em;text-decoration:none}
+.verdict{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.verdict h3{margin:0}
+.note{background:var(--amber-soft);border-radius:6px;padding:12px 16px;font-size:.92rem}
+.tbl{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.9rem}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--rule)}
+th{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+tr:last-child td{border-bottom:0}
+.pill{display:inline-block;font-family:var(--f-mono);font-size:.72rem;padding:2px 8px;border-radius:999px;white-space:nowrap;font-weight:500}
+.p-red{background:var(--red-soft);color:var(--red)}
+.p-amber{background:var(--amber-soft);color:var(--amber)}
+.p-green{background:var(--green-soft);color:var(--green)}
+.bars{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.bar-row{display:grid;grid-template-columns:minmax(0,190px) 1fr;gap:12px;align-items:center}
+.bar-label{font-size:.85rem;line-height:1.3}
+.bar-track{position:relative;height:22px}
+.bar{height:100%;background:var(--accent);border-radius:2px;min-width:2px}
+.bar.rev{background:var(--muted)}
+.bar-val{font-family:var(--f-mono);font-size:.78rem;margin-top:2px;color:var(--muted)}
+.chain{display:flex;flex-direction:column;gap:0;align-items:stretch}
+.link{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:10px 14px;font-size:.92rem}
+.link b{font-weight:600}
+.arrow{text-align:center;color:var(--muted);font-family:var(--f-mono);line-height:1.4;font-size:.9rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.two>div{min-width:0;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.sources{font-size:.82rem;color:var(--muted)}
+.sources li{word-break:break-word}
+@media (max-width:600px){.two{grid-template-columns:1fr}.bar-row{grid-template-columns:1fr;gap:4px}h1{font-size:1.75rem}}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:12px">
+    <div class="eyebrow">Research brief · data as of 27 Oct 2026</div>
+    <h1>Will AI spending crash the market? Stress-testing the thesis</h1>
+    <p class="lede">Your theory has four parts: AI earns far less than is being spent on it, the companies supplying power and data centres are taking on debt they can't repay, loans backed by GPUs are fragile, and the market looks greedy the way it did before past crashes. This brief checks each part against current data, makes the strongest case for it and against it, and then explains how people try to profit from a crash and why most of them get the timing wrong.</p>
+    <p class="meta">Educational research only, not personal financial advice. Several figures come from press reports rather than audited filings; those are flagged. Numbered links go to the sources at the bottom.</p>
+  </header>
+
+  <section class="verdict">
+    <h3>Bottom line</h3>
+    <p>The core worry holds up better than most bubble talk. In 2026 the big cloud companies are expected to spend more on capex than they bring in from operations for the first time, a growing share is paid for with debt and off-balance-sheet deals, and stock market valuations, concentration and margin debt are near or past dot-com levels.</p>
+    <p>Two parts of the theory need updating. AI revenue is now in the tens of billions per company, not the low billions, though it is still far below the spending and most of it isn't profit. And regulated power utilities are better protected than they look. The weakest links are Oracle, the GPU cloud companies ("neoclouds") such as CoreWeave, and the private-credit vehicles financing them.</p>
+    <p>None of this tells you <em>when</em>. Timing is the part that ruins most people who bet on crashes.</p>
+  </section>
+
+  <h2>1. AI revenue vs. AI spending</h2>
+  <p><strong>What you said:</strong> profits in the low billions can't support investment in the trillions.</p>
+  <p><strong>What the data shows:</strong> the spending side is right. Amazon, Microsoft, Alphabet and Meta are guiding to roughly $700–725B of capex in 2026, up about 75% from ~$410B in 2025, and Wall Street expects over $1T in 2027<sup><a href="#s1">1</a></sup>. Including Oracle and leases, 2026 is close to $800B<sup><a href="#s2">2</a></sup>. A Brookings conference paper estimates the full US data-centre pipeline at about $10.3T over 2025–2032, around 3.6% of GDP a year, which is roughly three times the telecom-fibre boom at its peak<sup><a href="#s3">3</a></sup>.</p>
+  <p>The revenue side is bigger than "low billions", but most of it is not profit:</p>
+
+  <div class="bars" role="img" aria-label="Bar chart comparing 2026 Big Four capex of about 725 billion dollars with AI revenue run-rates of 37 to 74 billion dollars">
+    <div class="eyebrow">2026, US$ billions per year, drawn to one scale</div>
+    <div class="bar-row"><div class="bar-label">Big 4 capex guidance 2026</div><div><div class="bar-track"><div class="bar" style="width:100%"></div></div><div class="bar-val">~$700–725B</div></div></div>
+    <div class="bar-row"><div class="bar-label">Anthropic annualised revenue (Jul, press-tracked)</div><div><div class="bar-track"><div class="bar rev" style="width:10.2%"></div></div><div class="bar-val">~$74B, unaudited</div></div></div>
+    <div class="bar-row"><div class="bar-label">OpenAI annualised net revenue (Oct, per FT)</div><div><div class="bar-track"><div class="bar rev" style="width:6.9%"></div></div><div class="bar-val">~$50B, unaudited</div></div></div>
+    <div class="bar-row"><div class="bar-label">Microsoft AI business run-rate</div><div><div class="bar-track"><div class="bar rev" style="width:5.1%"></div></div><div class="bar-val">~$37B</div></div></div>
+  </div>
+
+  <ul>
+    <li>OpenAI's annualised net revenue was reported near $50B in October, after a widely circulated ~$70B figure that turned out to be gross. Anthropic's was tracked at ~$74B in July. Neither has public audited accounts, so treat these as rough<sup><a href="#s4">4</a></sup>.</li>
+    <li>The AI labs lose money. Reports cited by Spinel Capital put OpenAI's projected cumulative cash burn above $650B before it expects to turn a profit<sup><a href="#s7">7</a></sup>.</li>
+    <li>The money that is real profit sits with suppliers. Nvidia earned $59.7B of net income on $96.2B revenue in a single quarter (May–July 2026), with a 75% gross margin<sup><a href="#s5">5</a></sup>. That is the opposite of 1999's money-losing dot-coms, but it is profit made <em>from</em> the capex, so it only lasts as long as the capex does.</li>
+    <li>The gap that matters is forward-looking. Brookings estimates the buildout needs about $3.7T a year of revenue by 2032 to earn a 10% return, or about $6T if GPUs only last three years. Today's lab revenue (~$100B combined) would have to grow about 80% a year for six years to get there<sup><a href="#s3">3</a></sup>.</li>
+  </ul>
+  <p class="note"><strong>Revised version of your claim:</strong> AI revenue is in the low hundreds of billions and growing fast, against spending approaching a trillion a year. The investment only pays off if revenue grows roughly 30-fold by 2032.</p>
+
+  <h2>2. Debt in the supporting companies</h2>
+  <p><strong>What you said:</strong> power-grid and other supporting companies have taken on debt they can't pay back.</p>
+  <h3>Utilities: probably not where it breaks</h3>
+  <p>US utilities plan about $1.4T of grid and generation spending over five years, which implies around $150B of bond issuance a year<sup><a href="#s8">8</a></sup>. That is a lot of debt. But utilities are regulated monopolies, and most have written special tariffs for data centres. Of 77 large-load tariff filings tracked by CoBank, 33 set minimum bills averaging about 80% of contracted capacity, contracts typically run 10–20 years, exit fees cover unrecovered costs, and 44 require collateral (Dominion asks up to $1.5M per megawatt)<sup><a href="#s9">9</a></sup>. If a data centre goes away, the utility usually gets paid anyway. The real risk is political: households facing higher bills and stranded plants if a tenant's parent company itself fails.</p>
+  <h3>Where the debt is genuinely stretched</h3>
+  <ul>
+    <li><strong>Hyperscalers themselves.</strong> Debt as a share of capex rose from 9% in FY24 to 32% by mid-2026, and free cash flow is expected near zero or negative in FY26 for all of the big five except Alphabet and Microsoft. Alphabet even raised about $85B of new equity in June<sup><a href="#s2">2</a></sup>. Balance sheets are still strong though: four of the five run around 1× debt/EBITDA.</li>
+    <li><strong>Oracle.</strong> The clearest weak link. About $167B of borrowings, free cash flow of −$23.7B in its last fiscal year, a downgrade to BBB− (the lowest investment grade) in July, and record credit-default-swap prices near 198bps. More than half of its $638B contract backlog is reportedly tied to OpenAI, a company that is losing money<sup><a href="#s7">7</a></sup>.</li>
+    <li><strong>Off-balance-sheet vehicles.</strong> Meta's Hyperion data centre was put in a joint venture that borrowed $27B at about 90% debt-to-assets with a thin 1.12× debt service coverage ratio. Moody's counts roughly $660B of hyperscaler lease commitments not yet on balance sheets<sup><a href="#s3">3</a></sup>.</li>
+    <li><strong>Investor appetite is fading.</strong> Morgan Stanley expects about $570B of AI-related debt issuance in 2026. Orders for hyperscaler bonds covered nearly 5× the amount offered in February and under 2× by July<sup><a href="#s10">10</a></sup>.</li>
+  </ul>
+
+  <h2>3. Loans backed by GPUs</h2>
+  <p><strong>What you said:</strong> if a borrower fails, what would a lender do with a warehouse of fast-depreciating GPUs?</p>
+  <p>This is the strongest part of your instinct, with one correction: lenders mostly know the hardware is weak collateral, so they lend against the <em>customer contract</em> instead.</p>
+  <ul>
+    <li><strong>Size.</strong> Over $20B of GPU-backed facilities have been announced, led by CoreWeave ($14.2B), Fluidstack (up to $10B) and Lambda<sup><a href="#s11">11</a></sup>. CoreWeave's $8.5B loan in March 2026 was rated investment grade (A3), so insurers and pension funds now hold this risk<sup><a href="#s12">12</a></sup>.</li>
+    <li><strong>How fast the chips lose value.</strong> H100 rental prices fell from about $8/hour in early 2024 to $1.70 in October 2025, then recovered to about $2.35<sup><a href="#s11">11</a></sup>. Used three-year-old H100 systems sell for about 45% of new<sup><a href="#s12">12</a></sup>. A forced sale might fetch 30–50% of new (an estimate)<sup><a href="#s11">11</a></sup>. The used-GPU market is tiny: $26M of tracked sales over three years<sup><a href="#s11">11</a></sup>. Dumping a failed lender's fleet would crash that price.</li>
+    <li><strong>Accounting choices.</strong> CoreWeave depreciates GPUs over six years, Nebius over four. Meta lengthened server lives to 5.5 years, cutting depreciation by ~$2.9B; Amazon shortened some to five. Michael Burry estimates ~$176B of understated depreciation across the industry in 2026–2028<sup><a href="#s11">11</a></sup><sup><a href="#s12">12</a></sup>.</li>
+    <li><strong>Circularity.</strong> A $500B facility to finance Nvidia chip purchases reportedly carries a 25% residual value guarantee from Nvidia, so Nvidia could owe up to $125B if the chips lose value<sup><a href="#s3">3</a></sup>. The same chip can show up as Nvidia revenue, a customer's asset, and a lender's collateral.</li>
+  </ul>
+  <p class="note"><strong>The real failure mode:</strong> the GPUs won't be worthless. The problem is that loans run 6–10 years against chips that earn most of their value in the first three, so the whole structure depends on a small number of customers (largely OpenAI, Microsoft and Meta) honouring their contracts.</p>
+
+  <h2>4. How a crash would spread</h2>
+  <p>Putting the pieces together, this is the most plausible chain. Each step is a thing to watch.</p>
+  <div class="chain">
+    <div class="link"><b>Trigger:</b> AI lab growth disappoints, or funding for loss-making labs dries up (e.g. a failed raise or IPO).</div>
+    <div class="arrow">↓</div>
+    <div class="link"><b>Contracts:</b> labs renegotiate or miss compute commitments to Oracle, CoreWeave and other neoclouds.</div>
+    <div class="arrow">↓</div>
+    <div class="link"><b>Credit:</b> GPU loans, SPV bonds and private-credit funds take losses; GPU fire sales push hardware values down further.</div>
+    <div class="arrow">↓</div>
+    <div class="link"><b>Capex cut:</b> hyperscalers slow spending, and Nvidia, chip suppliers and power equipment makers lose orders.</div>
+    <div class="arrow">↓</div>
+    <div class="link"><b>Index:</b> the top 10 stocks are ~40% of the S&amp;P 500, so ordinary index funds fall sharply. Record margin debt forces selling.</div>
+  </div>
+
+  <h2>5. Lessons from past crashes</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Episode</th><th>What happened</th><th>Parallel to AI</th><th>Key difference</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Telecom fibre, 1996–2002</strong></td><td>Firms borrowed heavily to lay fibre for expected internet traffic. By 2002 only 2–5% of US fibre was lit. Telecom was 26% of all corporate bond defaults in 2001; Global Crossing, Williams and 360Networks went bankrupt<sup><a href="#s13">13</a></sup>.</td><td>The closest match: debt-funded infrastructure built ahead of demand, with fast price declines.</td><td>The builders then were mostly weak, indebted upstarts. Today's main spenders are the most profitable companies on earth. The fibre was eventually used, but the original investors lost.</td></tr>
+      <tr><td><strong>Dot-com, 2000–2002</strong></td><td>The Nasdaq fell about 78% peak to trough. CAPE peaked near 44 and the top 10 stocks were ~26% of the S&amp;P 500<sup><a href="#s14">14</a></sup>.</td><td>Today CAPE is ~41 and the top 10 are ~40%, more concentrated than 2000<sup><a href="#s14">14</a></sup>.</td><td>Leading firms today have real earnings. Many 1999 IPOs had none.</td></tr>
+      <tr><td><strong>2008 financial crisis</strong></td><td>Loans against an asset (houses) whose value was assumed stable were repackaged, rated highly and sold to institutions.</td><td>GPU loans now carry investment-grade ratings and sit with insurers. Forbes notes the resemblance<sup><a href="#s12">12</a></sup>.</td><td>The market is far smaller ($20B+ of GPU loans vs trillions in mortgages), backed by named corporate customers, and not tied to household wealth.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>6. Warning signs then and now</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Sign seen before past crashes</th><th>Today</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Extreme valuations</td><td class="num">Shiller CAPE ~41 (long-run avg ~17; 2000 peak ~44). Above 40 only three times in a century<sup><a href="#s15">15</a></sup>.</td><td><span class="pill p-red">Showing</span></td></tr>
+      <tr><td>Market concentration</td><td class="num">Top 10 ≈ 40% of S&amp;P 500, highest since 1965 (2000: ~26%)<sup><a href="#s14">14</a></sup>.</td><td><span class="pill p-red">Showing</span></td></tr>
+      <tr><td>Margin debt surge</td><td class="num">Record $1.50T in June, +77% since Apr 2025. Jumps of 65%+ preceded 2000, 2008 and 2022 declines<sup><a href="#s14">14</a></sup>.</td><td><span class="pill p-red">Showing</span></td></tr>
+      <tr><td>Debt-funded overbuild &amp; vendor financing</td><td>Capex above operating cash flow; debt share of capex 9%→32%; Nvidia guarantees and investments in customers<sup><a href="#s2">2</a></sup><sup><a href="#s3">3</a></sup>.</td><td><span class="pill p-red">Showing</span></td></tr>
+      <tr><td>Stress in the weakest credits</td><td>Oracle at BBB−, CDS at records; bond order books thinning; July AI-infrastructure sell-off<sup><a href="#s7">7</a></sup><sup><a href="#s10">10</a></sup>.</td><td><span class="pill p-amber">Early</span></td></tr>
+      <tr><td>Rising long-term rates</td><td class="num">10-yr Treasury ~5.2%, 30-yr ~5.6%; markets give some odds of a Fed hike<sup><a href="#s16">16</a></sup>.</td><td><span class="pill p-amber">Partial</span></td></tr>
+      <tr><td>Broad credit spreads widening</td><td class="num">High-yield spread ~3.2%, investment grade ~0.9%, still near cycle lows<sup><a href="#s16">16</a></sup>.</td><td><span class="pill p-green">Not yet</span></td></tr>
+      <tr><td>Yield curve inversion / rising unemployment</td><td class="num">10y–2y +46bps (not inverted); unemployment 4.2%, Sahm rule not triggered<sup><a href="#s16">16</a></sup>.</td><td><span class="pill p-green">Not yet</span></td></tr>
+      <tr><td>Widespread "it's a bubble" talk</td><td>Most fund managers in BofA's Oct 2025 survey already called AI a bubble<sup><a href="#s17">17</a></sup>. Mixed signal: crowds often say "bubble" for years before the top.</td><td><span class="pill p-amber">Mixed</span></td></tr>
+    </tbody>
+  </table></div>
+  <p>The pattern: the <em>fuel</em> for a crash (valuation, concentration, leverage) is all present. The usual <em>triggers</em> (credit spreads blowing out, recession, inverted curve) mostly are not. On 22 October the Nasdaq fell 2.6% in a day<sup><a href="#s15">15</a></sup>, which shows how sensitive the market is, but sharp single-day drops happen inside bull markets too.</p>
+
+  <h2>7. The strongest case against your theory</h2>
+  <div class="two">
+    <div>
+      <h3>Why it might not crash</h3>
+      <ul>
+        <li>Demand is real today: Google Cloud's backlog is over $460B<sup><a href="#s1">1</a></sup>, GPU rental prices have recovered, and supply is constrained by power.</li>
+        <li>The main spenders can absorb a slowdown. They can cut capex and still be very profitable.</li>
+        <li>Utility and GPU lenders wrote protections (minimum bills, collateral, contracts with investment-grade firms).</li>
+        <li>AI revenue is growing several-fold a year. If that continues even partly, the gap narrows.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Why it could also end without a "crash"</h3>
+      <ul>
+        <li>Overbuilds can deflate slowly: spending flattens, stocks go sideways for years and valuations drift down while earnings catch up.</li>
+        <li>The fibre bust destroyed telecom investors but the infrastructure became the backbone of the internet. AI losses could stay with Oracle, neoclouds and private credit rather than the whole market.</li>
+        <li>The average S&amp;P bear market has lasted ~9.5 months, while bull markets last ~3.6× longer<sup><a href="#s15">15</a></sup>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>8. How people try to profit from a crash</h2>
+  <p>Below is how the common approaches work and how each one loses money. This is general education, not a recommendation; options, shorting and leveraged products can lose more than people expect, and some can lose more than the amount put in.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Approach</th><th>How it works</th><th>Main risks</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Buying put options</strong></td><td>The right to sell a stock or index (e.g. QQQ, NVDA) at a set price before a date. Loss is capped at the premium paid.</td><td>Expire worthless if the fall comes after the expiry date, which is the most common outcome. Prices lose value every day (time decay), and premiums are expensive when fear is already high.</td></tr>
+      <tr><td><strong>Put spreads</strong></td><td>Buy one put and sell a lower one to cut the cost, in exchange for capping the payout.</td><td>Same timing risk; profit is capped if the crash is large.</td></tr>
+      <tr><td><strong>Inverse ETFs</strong> (e.g. -1× or -3× Nasdaq funds)</td><td>Funds designed to move opposite to an index <em>for one day</em>.</td><td>They reset daily, so over weeks a choppy market erodes them even if the index ends lower. The SEC and FINRA have warned they are generally unsuitable for buy-and-hold investors<sup><a href="#s18">18</a></sup>.</td></tr>
+      <tr><td><strong>Short selling</strong></td><td>Borrow shares, sell them, hope to buy back cheaper.</td><td>Losses are theoretically unlimited because a stock can keep rising. Borrowing fees, margin calls and short squeezes can force you out before you are proven right.</td></tr>
+      <tr><td><strong>Hedging an existing portfolio</strong></td><td>Reduce concentration (index funds are now ~40% top 10), rebalance, hold more cash or short-term Treasuries, consider equal-weight funds, or use collars (sell upside to fund protection).</td><td>You give up gains if the boom continues. This is about losing less, not making money from the crash.</td></tr>
+      <tr><td><strong>Credit bets</strong> (CDS, shorting bonds)</td><td>How professionals bet against Oracle's or neoclouds' debt.</td><td>Mostly not available to individuals. Listed proxies like high-yield bond ETFs move for many other reasons.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Timing risk</h3>
+  <ul>
+    <li>Alan Greenspan warned of "irrational exuberance" in December 1996. The Nasdaq roughly tripled over the next three years before it crashed.</li>
+    <li>Michael Burry's mortgage short in 2005–07 lost money and nearly drove his investors out before it paid off. Most people can't hold a losing position that long.</li>
+    <li>Being right about a crash and wrong about the date by a year usually produces the same result as being wrong: expired options, decayed inverse ETFs, or a forced short exit.</li>
+    <li>People who did best in past crashes mostly hadn't predicted the date. They had cash or hedges ready and bought assets cheaply afterwards.</li>
+  </ul>
+  <p class="note">If you act on this, work out the maximum loss you can accept and the date by which you'd admit you were wrong <em>before</em> placing anything. Before using options, shorts or leveraged ETFs, consider talking to a licensed adviser who knows your full situation.</p>
+
+  <h2>What to watch next</h2>
+  <ul>
+    <li>OpenAI and Anthropic funding rounds, IPO filings and any audited numbers.</li>
+    <li>Hyperscaler capex guidance on each earnings call, especially any cut for 2027.</li>
+    <li>Oracle's credit rating (one more notch is junk) and its CDS price.</li>
+    <li>CoreWeave and other neocloud loan spreads, and GPU rental prices (CME planned H100/B200 rental futures<sup><a href="#s11">11</a></sup>).</li>
+    <li>High-yield credit spreads, unemployment and the Sahm rule, which have signalled past turns.</li>
+  </ul>
+
+  <h2>Sources</h2>
+  <ol class="sources">
+    <li id="s1"><a href="https://www.forbes.com/sites/jasonkirsch/2026/10/07/big-tech-will-spend-over-700-billion-on-ai-this-year-follow-the-money-not-the-hype/">Forbes, "Big Tech Will Spend Over $700 Billion On AI This Year", 7 Oct 2026</a></li>
+    <li id="s2"><a href="https://insight.factset.com/hyperscalers-tap-external-financing-as-ai-capex-outruns-cash-flow">FactSet, "Hyperscalers Tap External Financing as AI Capex Outruns Cash Flow", 23 Jul 2026</a></li>
+    <li id="s3"><a href="https://www.brookings.edu/wp-content/uploads/2026/09/4c_Van-Nieuwerburgh.pdf">Van Nieuwerburgh, "Financing the AI Buildout", Brookings BPEA conference draft, Sep 2026</a></li>
+    <li id="s4"><a href="https://deepquarry.substack.com/p/reality-check-what-can-and-cant-be">Deep Quarry, "Reality Check: revenues at OpenAI and Anthropic" (compiles The Information, FT, Axios reports)</a></li>
+    <li id="s5"><a href="https://www.sec.gov/Archives/edgar/data/0001045810/000104581026000073/q2fy27pr.htm">Nvidia Q2 FY2027 results, SEC filing, 26 Aug 2026</a></li>
+    <li id="s7"><a href="https://spinelcapital.substack.com/p/oracle-ai-credit">Spinel Capital, "What the Bond Market Knows" (Oracle credit), 11 Jul 2026</a></li>
+    <li id="s8"><a href="https://ecmsource.com/utilities-ai-bond-issuance-wave-power-grid-2026/">ECM Source, "Utilities' $770B Bond Issuance Wave", 2026</a></li>
+    <li id="s9"><a href="https://www.cobank.com/knowledge-exchange/the-state-of-large-load-rate-design-insights-from-the-delta-database">CoBank, "The State of Large-Load Rate Design", 30 Apr 2026</a></li>
+    <li id="s10"><a href="https://www.forbes.com/sites/robertszczerba/2026/07/17/bond-investors-push-back-as-ai-debt-heads-toward-570-billion/">Forbes, "Bond Investors Push Back As AI Debt Heads Toward $570 Billion", 17 Jul 2026</a></li>
+    <li id="s11"><a href="https://www.wing.vc/content/how-the-gpu-became-collateral">Wing VC, "How the GPU Became Collateral", Sep 2026</a></li>
+    <li id="s12"><a href="https://www.forbes.com/sites/daraabasiita/2026/06/09/gpu-debt-has-gone-investment-grade-heres-who-holds-the-risk/">Forbes, "GPU Debt Has Gone Investment Grade. Here's Who Holds The Risk", 9 Jun 2026</a></li>
+    <li id="s13"><a href="https://www.fdic.gov/bank/analytical/bank-trends/bt0205.pdf">FDIC Bank Trends, telecommunications sector report, Jun 2002</a></li>
+    <li id="s14"><a href="https://finance.biggo.com/news/2a62d354-d0ca-48a4-bd9f-5917b242e9c9">BigGo Finance, "S&amp;P 500 Concentration Hits 60-Year High", 26 Aug 2026 (citing FINRA margin data)</a></li>
+    <li id="s15"><a href="https://finance.biggo.com/news/a001ee8f-57b4-4c2d-8cea-519f9c31f296">BigGo Finance, "Nasdaq's 694-Point Slide…", 26 Oct 2026 (citing Bespoke Investment Group)</a></li>
+    <li id="s16"><a href="https://buttondown.com/fairvalue/archive/fair-value-monday-october-5-2026/">Fair Value newsletter macro snapshot, 5 Oct 2026 (secondary source)</a></li>
+    <li id="s17"><a href="https://benzinga.com/z/48316028">Benzinga on BofA Global Fund Manager Survey, Oct 2025</a></li>
+    <li id="s18"><a href="https://finra.org/media-center/news-releases/2009/finra-sec-warn-retail-investors-about-investing-leveraged-or-inverse">FINRA/SEC investor alert on leveraged and inverse ETFs, 2009</a></li>
+  </ol>
+</div>
+
+</body></html>

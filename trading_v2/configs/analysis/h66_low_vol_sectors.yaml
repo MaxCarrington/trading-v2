@@ -1,0 +1,11 @@
+# H66 low-volatility sectors (151 Trading Strategies 3.4), research only
+# notebooks/hypotheses/h66_low_vol_sectors.ipynb. Data: IBKR adjusted daily (scripts/ibkr_download.py)
+start_year: 2005          # research period. Do not change to 2019+ until the rules are frozen.
+end_year: 2018
+sectors: [XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY]
+benchmark: SPY
+vol_days: 252             # 12 months of daily volatility
+top_n: 3                  # hold the 3 calmest
+cost_per_side_%: 0.05
+n_tests: 50
+random_runs: 1000
