@@ -1,0 +1,23 @@
+strategy: "index_dip_v1.0"
+
+provider: "OANDA"
+security_type: "forex"         # loader reads the index data from the OANDA folder
+starting_capital: 10000
+margin_rate: 1.0               # cash account (ETF): a position can't be bigger than the account
+
+costs:                         # ETF costs (e.g. CSPX): about 3 bp per side for spread + commission
+  model: intraday
+  spread_pips: {}
+  slippage_pips: 0.0
+  commission_pct: 0.03         # % per side; the post used 1 bp, so this is 3x more cautious
+
+symbols: ["SPX500_USD"]        # the S&P 500 (SPY/CSPX); index price, so dividends and cash interest are not included
+
+timeframe: "D"
+start_date: "2005"
+end_date: "2018"
+
+parameters:
+  position_fraction: 0.99      # 99% of the account, so the next open can't need more than the account
+  stop_pct: 8
+  max_hold_days: 10

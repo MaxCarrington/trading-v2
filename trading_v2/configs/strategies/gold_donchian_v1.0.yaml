@@ -1,0 +1,31 @@
+strategy: "gold_donchian_v1.0"
+
+provider: "OANDA"
+security_type: "forex"
+starting_capital: 100000
+
+# Step 1 (reconcile): mid prices, no costs
+margin_rate: 0.05          # gold CFD, 1:20 (UK retail)
+costs:
+  model: bid_ask           # buy at the ask, sell at the bid (real OANDA spreads)
+  slippage_pips: 0         # XAU pip_size is 0.0001 in the engine, so use commission_pct instead
+  commission_pct: 0.005    # = the research's 0.005% slippage per side
+  spread_pips: {}
+financing: {markup_pct: 2.5}   # rate + 2.5% per night, as in the research
+
+
+symbols: [XAG_USD, XPT_USD, XCU_USD, WTICO_USD, BCO_USD, SPX500_USD, NAS100_USD, DE30_EUR, UK100_GBP, JP225_USD]
+
+timeframe: "H1"
+start_date: "2005"
+end_date: "2026"
+
+parameters:
+  channel_bars: 55       # Donchian lookback (hours)
+  atr_bars: 14           # ATR length (hours)
+  trail_atr: 4           # trailing stop distance in ATRs
+  sides: "both"          # "both" or "long"
+  position_size: 1       # 1 unit while reconciling
+  risk_per_trade: 0.5
+  min_stop_pct: 0.5
+  trend_days: 200

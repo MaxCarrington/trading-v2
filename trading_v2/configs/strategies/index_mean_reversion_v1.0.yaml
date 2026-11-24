@@ -1,0 +1,41 @@
+strategy: "index_mean_reversion_v1.0"
+
+provider: "OANDA"
+security_type: "forex"         # the loader reads index CFDs from the same OANDA data folder
+starting_capital: 10000
+margin_rate: 0.05              # index CFDs: 1:20 leverage (UK retail)
+
+costs:
+  model: intraday              # OANDA index data has no real bid/ask before 2012, so use fixed spreads (index points)
+  spread_pips:                 # about 2x OANDA's 2012-2018 median spread, to cover slippage as well
+    SPX500_USD: 1.5
+    DE30_EUR: 4.0
+    UK100_GBP: 3.5
+    JP225_USD: 25.0
+  slippage_pips: 0.0           # included in the spreads above
+  commission_pct: 0.0
+financing:
+  markup_pct: 2.5              # long index CFD pays the currency's rate + 2.5% a year (estimate); dividends ignored
+
+symbols: ["SPX500_USD", "DE30_EUR", "UK100_GBP", "JP225_USD"]
+
+timeframe: "D"
+start_date: "2005"
+end_date: "2018"
+
+parameters:
+  entry_rsi: 10            # buy when RSI(2) < 10
+  exit_rule: "sma5"        # sell when the close is back above the 5-day average ("rsi70": when RSI(2) > 70)
+  trend_filter: true       # only buy dips above the 200-day average
+  max_hold_days: 10
+  leverage: 1              # position = 1x the account
+
+walk_forward:              # scripts/walk_forward_portfolio.py
+  separate_pairs: true     # each index in its own account and currency; monthly returns averaged
+  first_test_year: 2010
+  last_test_year: 2018
+  train_years: 4
+  grid:
+    entry_rsi: [5, 10, 20]
+    exit_rule: ["sma5", "rsi70"]
+    trend_filter: [true, false]

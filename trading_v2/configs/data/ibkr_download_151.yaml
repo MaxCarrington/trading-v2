@@ -1,0 +1,55 @@
+# IBKR daily data for the "151 Trading Strategies" tests (scripts/ibkr_download.py)
+#   PYTHONPATH=src python scripts/ibkr_download.py data/ibkr_download_151.yaml
+# Needs IB Gateway running and logged in (paper is fine), and Client Portal / the phone app logged out.
+# Saved like the OANDA files: data/raw/ibkr/<name>/<year>/D/merged/<name>_<year>.csv
+host: 127.0.0.1
+port: 4002
+client_id: 12
+start_year: 2005
+end_year: 2026
+bar_size: 1 day
+timeframe: D
+adjusted: true            # ETFs: dividend-adjusted prices (total return). Indices still use TRADES.
+
+# Several ETFs start after 2005 (shown in the comments); IBKR returns what exists.
+instruments:
+  # 4.1-4.3 sector rotation: the 9 original S&P sector ETFs (all from 1998) + the market
+  - {name: SPY, sec_type: STK, symbol: SPY, exchange: SMART, primary_exchange: ARCA, currency: USD}
+  - {name: XLB, sec_type: STK, symbol: XLB, exchange: SMART, primary_exchange: ARCA, currency: USD}
+  - {name: XLE, sec_type: STK, symbol: XLE, exchange: SMART, primary_exchange: ARCA, currency: USD}
+  - {name: XLF, sec_type: STK, symbol: XLF, exchange: SMART, primary_exchange: ARCA, currency: USD}
+  - {name: XLI, sec_type: STK, symbol: XLI, exchange: SMART, primary_exchange: ARCA, currency: USD}
+  - {name: XLK, sec_type: STK, symbol: XLK, exchange: SMART, primary_exchange: ARCA, currency: USD}
+  - {name: XLP, sec_type: STK, symbol: XLP, exchange: SMART, primary_exchange: ARCA, currency: USD}
+  - {name: XLU, sec_type: STK, symbol: XLU, exchange: SMART, primary_exchange: ARCA, currency: USD}
+  - {name: XLV, sec_type: STK, symbol: XLV, exchange: SMART, primary_exchange: ARCA, currency: USD}
+  - {name: XLY, sec_type: STK, symbol: XLY, exchange: SMART, primary_exchange: ARCA, currency: USD}
+
+  # 3.3-3.7 factor tilts (instead of the Ken French library)
+  - {name: IWD,  sec_type: STK, symbol: IWD,  exchange: SMART, primary_exchange: ARCA, currency: USD}  # value, 2000
+  - {name: IWF,  sec_type: STK, symbol: IWF,  exchange: SMART, primary_exchange: ARCA, currency: USD}  # growth, 2000
+  - {name: IWM,  sec_type: STK, symbol: IWM,  exchange: SMART, primary_exchange: ARCA, currency: USD}  # small caps, 2000
+  - {name: SPLV, sec_type: STK, symbol: SPLV, exchange: SMART, primary_exchange: ARCA, currency: USD}  # low volatility, 2011
+  - {name: USMV, sec_type: STK, symbol: USMV, exchange: SMART, primary_exchange: BATS, currency: USD}  # min volatility, 2011
+  - {name: MTUM, sec_type: STK, symbol: MTUM, exchange: SMART, primary_exchange: BATS, currency: USD}  # momentum, 2013
+  - {name: QUAL, sec_type: STK, symbol: QUAL, exchange: SMART, primary_exchange: BATS, currency: USD}  # quality, 2013
+
+  # 9.3 / 19.3 commodities and inflation hedges as ETFs
+  - {name: GLD, sec_type: STK, symbol: GLD, exchange: SMART, primary_exchange: ARCA, currency: USD}  # 2004
+  - {name: DBC, sec_type: STK, symbol: DBC, exchange: SMART, primary_exchange: ARCA, currency: USD}  # 2006
+  - {name: TIP, sec_type: STK, symbol: TIP, exchange: SMART, primary_exchange: ARCA, currency: USD}  # 2003
+
+  # 5.x / 19.4 bonds as ETFs (total return, so coupons are included)
+  - {name: SHY,  sec_type: STK, symbol: SHY,  exchange: SMART, primary_exchange: NASDAQ, currency: USD}  # 1-3y
+  - {name: IEF,  sec_type: STK, symbol: IEF,  exchange: SMART, primary_exchange: NASDAQ, currency: USD}  # 7-10y
+  - {name: TLT,  sec_type: STK, symbol: TLT,  exchange: SMART, primary_exchange: NASDAQ, currency: USD}  # 20y+
+  - {name: LQD,  sec_type: STK, symbol: LQD,  exchange: SMART, primary_exchange: ARCA,   currency: USD}  # corporate
+  - {name: HYG,  sec_type: STK, symbol: HYG,  exchange: SMART, primary_exchange: ARCA,   currency: USD}  # high yield, 2007
+  - {name: EMB,  sec_type: STK, symbol: EMB,  exchange: SMART, primary_exchange: NASDAQ, currency: USD}  # EM bonds, 2007
+  - {name: BWX,  sec_type: STK, symbol: BWX,  exchange: SMART, primary_exchange: ARCA,   currency: USD}  # non-US govt, 2007
+
+  # 7.2-7.3 volatility: VIX index, 3-month VIX (term structure) and VIX ETFs
+  - {name: VIX,   sec_type: IND, symbol: VIX,   exchange: CBOE, currency: USD}
+  - {name: VIX3M, sec_type: IND, symbol: VIX3M, exchange: CBOE, currency: USD}   # 2007
+  - {name: VIXY,  sec_type: STK, symbol: VIXY,  exchange: SMART, primary_exchange: BATS, currency: USD}  # long VIX, 2011
+  - {name: SVXY,  sec_type: STK, symbol: SVXY,  exchange: SMART, primary_exchange: BATS, currency: USD}  # short VIX, 2011

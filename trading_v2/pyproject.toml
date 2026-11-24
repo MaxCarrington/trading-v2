@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trading_v2"      
+version = "2.0.0"
+description = "A forex trading and backtesting framework"
+authors = [{ name = "Max Carrington", email = "maxcarrington0002@gmail.com" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+
+dependencies = [
+  "numpy",
+  "pandas",
+  "scipy",
+  "statsmodels",
+
+  "nolds",
+  "hurst",
+  "ta",
+  "arch",
+
+  "requests",
+  "oandapyV20",
+  "yfinance",
+
+  "matplotlib",
+  "mplfinance",
+  "seaborn",
+
+  "PyYAML",
+  "colorlog"
+]
+
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "black",
+  "isort",
+  "ruff",
+  "pre-commit",
+  "mypy",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

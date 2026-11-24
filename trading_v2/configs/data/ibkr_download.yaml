@@ -1,0 +1,21 @@
+# IBKR historical data download (scripts/ibkr_download.py)
+# Needs IB Gateway running and logged in (paper account is fine). Files are saved like the OANDA ones:
+#   data/raw/ibkr/<name>/<year>/D/merged/<name>_<year>.csv
+host: 127.0.0.1
+port: 4002                # IB Gateway paper = 4002, live = 4001 (TWS: paper 7497, live 7496)
+client_id: 11             # any number not used by another script at the same time
+start_year: 2024          # IBKR CFD history is short (a few years), so start recent
+end_year: 2026
+bar_size: 1 day           # IBKR wording, e.g. "1 day", "1 hour"
+timeframe: D              # folder name for this bar size (D, H1, ...)
+
+# name: the folder/file name we use. sec_type: CFD, CASH (forex) or STK (shares/ETFs).
+# CFD and CASH download BID and ASK (so we can measure IBKR's real spread); STK downloads TRADES.
+instruments:
+  - {name: SPX500_USD, sec_type: CFD, symbol: IBUS500, exchange: SMART, currency: USD}
+  - {name: DE40_EUR,   sec_type: CFD, symbol: IBDE40,  exchange: SMART, currency: EUR}
+  - {name: UK100_GBP,  sec_type: CFD, symbol: IBGB100, exchange: SMART, currency: GBP}
+  - {name: CH20_CHF,   sec_type: CFD, symbol: IBCH20,  exchange: SMART, currency: CHF}
+  - {name: GBP_USD,    sec_type: CASH, symbol: GBP,    exchange: IDEALPRO, currency: USD}
+  - {name: CSPX,       sec_type: STK, symbol: CSPX,    exchange: LSEETF, currency: USD}
+  - {name: VUSA,       sec_type: STK, symbol: VUSA,    exchange: LSEETF, currency: GBP}

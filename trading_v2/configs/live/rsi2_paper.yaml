@@ -1,0 +1,8 @@
+# Paper trading the RSI(2) index rule (H146 v1.0, frozen) on the OANDA practice account (scripts/paper_rsi2.py)
+symbols: [SPX500_USD, NAS100_USD, US30_USD, US2000_USD, DE30_EUR, UK100_GBP, FR40_EUR, EU50_EUR, JP225_USD, AU200_AUD, HK33_HKD, CH20_CHF]
+entry_rsi: 10        # buy below 10, sell above 90
+exit_rsi: 50
+trend_days: 200
+max_hold: 10         # trading days
+leverage: 1          # each market gets balance / 12 x leverage (1 = paper test size; FTMO 1, normal account 2)
+output_dir: "results/paper_rsi2"

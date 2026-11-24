@@ -1,0 +1,44 @@
+strategy: "fx_momentum_v1.0"
+
+provider: "OANDA"
+security_type: "forex"
+starting_capital: 10000
+margin_rate: 0.0333        # FX margin account in USD: 1:30 leverage (UK retail)
+
+costs:
+  model: intraday              # daily bars open at 22:00 UTC when spreads blow out, so use normal-hours spreads instead
+  spread_pips:                 # OANDA retail spreads at 14:00 London (the highest of 2006, 2012 and 2018 medians)
+    EUR_USD: 1.5
+    GBP_USD: 3.0
+    USD_JPY: 2.0
+    AUD_USD: 2.0
+    NZD_USD: 5.0
+    USD_CAD: 4.0
+    USD_CHF: 3.0
+  slippage_pips: 0.3
+  commission_pct: 0.0
+financing:
+  markup_pct: 1.5              # overnight swap: rate gap minus 1.5% a year (same estimate as the earlier notebooks)
+
+symbols: ["EUR_USD", "GBP_USD", "USD_JPY", "AUD_USD", "NZD_USD", "USD_CAD", "USD_CHF"]
+
+timeframe: "D"
+start_date: "2005"
+end_date: "2018"
+
+parameters:
+  lookback_months: 12      # score = return from 12 months ago...
+  skip_months: 1           # ...to 1 month ago
+  top_k: 2                 # long the best 2 currencies, short the worst 2
+  target_leg_vol: 0.05     # each leg sized for 5% annual volatility of the account
+  vol_days: 60
+  max_leg_leverage: 3      # no leg bigger than 3x the account
+
+walk_forward:              # scripts/walk_forward_portfolio.py
+  first_test_year: 2010
+  last_test_year: 2018
+  train_years: 4           # monthly strategy: 4 years = 48 rebalances to choose on
+  grid:
+    lookback_months: [3, 6, 12]
+    skip_months: [0, 1]
+    top_k: [2, 3]

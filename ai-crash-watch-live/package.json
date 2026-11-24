@@ -1,0 +1,12 @@
+{
+  "name": "ai-crash-watch-live",
+  "version": "1.0.0",
+  "description": "Event-driven AI crash warning dashboard that runs on your own computer",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "demo": "node server.js --demo"
+  }
+}

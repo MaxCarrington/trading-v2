@@ -1,0 +1,76 @@
+# FTMO's 58 stock CFDs (ftmo.com/en/symbols, Equities CFD tab, 7 Nov 2026): daily IBKR history for research
+# Run: PYTHONPATH=src python scripts/ibkr_download.py data/ibkr_download_ftmo_stocks.yaml
+# Needs IB Gateway running and logged in (paper is fine). Read-only: no orders.
+# adjusted: true asks IBKR for dividend- and split-adjusted prices (ADJUSTED_LAST). IBKR only serves these in one
+# request ending today, but the script saves only start_year..end_year, so nothing after 2018 is written.
+# Stocks that listed after 2018 (ZM, PLTR, SNOW, ARM, SPCX) will simply have no files.
+host: 127.0.0.1
+port: 4002                # IB Gateway paper = 4002, live = 4001 (TWS: paper 7497, live 7496)
+client_id: 12
+start_year: 2004          # one warm-up year for the 200-day average
+end_year: 2018            # research years only
+bar_size: 1 day
+timeframe: D
+adjusted: true
+
+instruments:
+  # US
+  - {name: AAPL,  sec_type: STK, symbol: AAPL,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: AMZN,  sec_type: STK, symbol: AMZN,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: BA,    sec_type: STK, symbol: BA,    exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: BABA,  sec_type: STK, symbol: BABA,  exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: BAC,   sec_type: STK, symbol: BAC,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: CSCO,  sec_type: STK, symbol: CSCO,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: CVX,   sec_type: STK, symbol: CVX,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: DIS,   sec_type: STK, symbol: DIS,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: META,  sec_type: STK, symbol: META,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: FDX,   sec_type: STK, symbol: FDX,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: GE,    sec_type: STK, symbol: GE,    exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: GM,    sec_type: STK, symbol: GM,    exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: GOOG,  sec_type: STK, symbol: GOOG,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: IBM,   sec_type: STK, symbol: IBM,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: INTC,  sec_type: STK, symbol: INTC,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: JNJ,   sec_type: STK, symbol: JNJ,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: JPM,   sec_type: STK, symbol: JPM,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: KO,    sec_type: STK, symbol: KO,    exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: MCD,   sec_type: STK, symbol: MCD,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: MSFT,  sec_type: STK, symbol: MSFT,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: NFLX,  sec_type: STK, symbol: NFLX,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: NVDA,  sec_type: STK, symbol: NVDA,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: PFE,   sec_type: STK, symbol: PFE,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: QCOM,  sec_type: STK, symbol: QCOM,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: T,     sec_type: STK, symbol: T,     exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: TSLA,  sec_type: STK, symbol: TSLA,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: V,     sec_type: STK, symbol: V,     exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: WMT,   sec_type: STK, symbol: WMT,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: XOM,   sec_type: STK, symbol: XOM,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: RTX,   sec_type: STK, symbol: RTX,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: LMT,   sec_type: STK, symbol: LMT,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: AMD,   sec_type: STK, symbol: AMD,   exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: AVGO,  sec_type: STK, symbol: AVGO,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: SBUX,  sec_type: STK, symbol: SBUX,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: MSTR,  sec_type: STK, symbol: MSTR,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: GME,   sec_type: STK, symbol: GME,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: NKE,   sec_type: STK, symbol: NKE,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: BRK_B, sec_type: STK, symbol: BRK B, exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: RACE,  sec_type: STK, symbol: RACE,  exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: ASML,  sec_type: STK, symbol: ASML,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: AZN,   sec_type: STK, symbol: AZN,   exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: TTE,   sec_type: STK, symbol: TTE,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: SAN,   sec_type: STK, symbol: SAN,   exchange: SMART, currency: USD, primary_exchange: NYSE}
+  # listed after 2018: kept so the list matches FTMO's, they'll come back empty
+  - {name: ZM,    sec_type: STK, symbol: ZM,    exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: PLTR,  sec_type: STK, symbol: PLTR,  exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  - {name: SNOW,  sec_type: STK, symbol: SNOW,  exchange: SMART, currency: USD, primary_exchange: NYSE}
+  - {name: ARM,   sec_type: STK, symbol: ARM,   exchange: SMART, currency: USD, primary_exchange: NASDAQ}
+  # Europe (home listings, in EUR)
+  - {name: ADS,   sec_type: STK, symbol: ADS,   exchange: SMART, currency: EUR, primary_exchange: IBIS}
+  - {name: ALV,   sec_type: STK, symbol: ALV,   exchange: SMART, currency: EUR, primary_exchange: IBIS}
+  - {name: BAYN,  sec_type: STK, symbol: BAYN,  exchange: SMART, currency: EUR, primary_exchange: IBIS}
+  - {name: DBK,   sec_type: STK, symbol: DBK,   exchange: SMART, currency: EUR, primary_exchange: IBIS}
+  - {name: SIE,   sec_type: STK, symbol: SIE,   exchange: SMART, currency: EUR, primary_exchange: IBIS}
+  - {name: BMW,   sec_type: STK, symbol: BMW,   exchange: SMART, currency: EUR, primary_exchange: IBIS}
+  - {name: MBG,   sec_type: STK, symbol: MBG,   exchange: SMART, currency: EUR, primary_exchange: IBIS}
+  - {name: AF,    sec_type: STK, symbol: AF,    exchange: SMART, currency: EUR, primary_exchange: SBF}
+  - {name: MC,    sec_type: STK, symbol: MC,    exchange: SMART, currency: EUR, primary_exchange: SBF}
+  - {name: IBE,   sec_type: STK, symbol: IBE,   exchange: SMART, currency: EUR, primary_exchange: BM}

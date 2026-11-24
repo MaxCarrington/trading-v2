@@ -1,0 +1,21 @@
+{
+  "note": "Signals with no free data feed. Edit these by hand (or ask Claude to update them). Status is red, amber or green.",
+  "updated": "2026-10-27",
+  "signals": [
+    { "label": "Shiller CAPE (S&P 500)", "value": "~41", "compare": "Avg ~17; 2000 peak ~44", "status": "red", "asOf": "2026-10-19" },
+    { "label": "Top 10 weight in S&P 500", "value": "~40%", "compare": "2000 peak ~26%", "status": "red", "asOf": "2026-08-26" },
+    { "label": "FINRA margin debt", "value": "$1.50T (+77% since Apr 2025)", "compare": "Jumps of 65%+ preceded 2000, 2008, 2022", "status": "red", "asOf": "2026-06-30" },
+    { "label": "Debt share of hyperscaler capex", "value": "32%", "compare": "9% in FY24", "status": "red", "asOf": "2026-06-30" },
+    { "label": "CoreWeave 5-yr CDS", "value": ">1,000 bps", "compare": "1,000 bps = distress", "status": "red", "asOf": "2026-10-15" },
+    { "label": "Oracle 5-yr CDS / rating", "value": "~282 bps, BBB-", "compare": "~108 bps in Nov 2025", "status": "amber", "asOf": "2026-10-20" },
+    { "label": "Hyperscaler bond order coverage", "value": "<2x", "compare": "~5x in Feb 2026", "status": "amber", "asOf": "2026-07-17" }
+  ],
+  "events": [
+    { "date": "2026-10-28", "event": "Fed rate decision (2pm ET)", "watch": "Hold vs. another 25bp hike" },
+    { "date": "2026-10-28", "event": "Microsoft and Alphabet earnings", "watch": "Cloud growth vs. capex; 2027 capex outlook" },
+    { "date": "2026-10-29", "event": "Amazon earnings", "watch": "AWS growth and free cash flow vs. ~$220B capex" },
+    { "date": "2026-11-10", "event": "OpenAI ~$30B round (approx.)", "watch": "Closes on time and size, or slips" },
+    { "date": "2026-11-15", "event": "Anthropic IPO (approx.)", "watch": "Pricing vs. $1.5-2T talk, first-day trading" },
+    { "date": "2026-11-17", "event": "Nvidia earnings", "watch": "Next-quarter outlook vs. ~$108B guide" }
+  ]
+}

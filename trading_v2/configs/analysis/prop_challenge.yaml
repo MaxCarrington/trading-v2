@@ -1,0 +1,22 @@
+# Prop-firm challenge test for the month-end strategy (scripts/prop_challenge_month_end.py), research dates only
+start_year: 2005
+end_year: 2018
+equity_file: results/month_end_stocks_bonds/SPX500_USD_DE30_EUR_UK100_GBP_CH20_CHF_2005_2018_none/equity.csv
+starting_capital: 10000   # what month_end_stocks_bonds.py used for equity.csv
+leverages: [1, 1.5, 2, 2.5, 3, 4]   # multiplies every position (FTMO Swing allows up to 1:30)
+
+# FTMO 2-Step (ftmo.com/en/trading-objectives, checked 22 Oct 2026)
+rules:
+  profit_target_%: 10     # phase 1
+  phase2_target_%: 5      # phase 2 (verification)
+  max_daily_loss_%: 5     # of initial capital, below the balance at midnight CE(S)T; equity incl. open trades must stay above
+  max_total_loss_%: 10    # static, below initial capital
+  min_trading_days: 4
+  time_limit_days: 0      # FTMO: no time limit
+  daily_buffer_%: 0       # tighten the daily limit (e.g. 1) to allow for intraday dips we can't see in daily closes
+  brake_at_%: 0           # cut size when equity is this far below the start (0 = off)
+  brake_factor: 0.5
+  funded_days: 252        # how long we follow the funded account
+  profit_split: 0.8
+  account_size: 70000     # £, your free-trial size
+  challenge_fee: 345      # £, approximate price of a £70k challenge (check FTMO's site); refunded with the first payout

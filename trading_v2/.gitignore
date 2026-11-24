@@ -1,0 +1,26 @@
+# Directories to ignore ---------------------------------------------------
+Charts/
+/data/
+/logs/
+TestResults/
+.idea/
+tests/
+/reports/
+/results/
+
+# Python cache files
+__pycache__/
+
+# Files to ignore ---------------------------------------------------------
+*.pyc
+*.pyo
+.DS_Store
+
+# Python build artifacts --------------------------------------------------
+build/
+dist/
+*.egg-info/
+
+# Local secrets / environment ---------------------------------------------
+.env
+.env.local

@@ -1,0 +1,7 @@
+# Paper trading London Breakout v1.5 on the OANDA practice account
+strategy_config: "strategies/london_breakout_v1.5.yaml"   # the same rules and parameters as the backtest
+
+max_units: 200000          # safety cap per trade (about $200k notional)
+seconds_after_close: 10    # wait this long after each hour so the H1 bar is complete
+warmup_days: 45            # history replayed at start-up for the 20-day trend average
+output_dir: "results/paper_trading"
